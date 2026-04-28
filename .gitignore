@@ -1,0 +1,33 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+!.vscode/settings.json
+
+# Backups (사용자 데이터 백업 — 저장소에 올리지 않음)
+*.bak
+backup_*.json
+iol_backup_*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node (Phase 2에서 사용시 대비)
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# Python (Phase 1 v1에서 일부 사용시)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Claude Code
+.claude/

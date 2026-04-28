@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IOL 렌즈 재고 관리</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#30363d;--bd:#30363d;
+  --text:#e6edf3;--dim:#8b949e;--mu:#484f58;
+  --g2:#2ea043;--gbg:rgba(46,160,67,.15);--gbd:rgba(46,160,67,.4);
+  --y2:#d29922;--ybg:rgba(210,153,34,.15);--ybd:rgba(210,153,34,.4);
+  --r2:#f85149;--rbg:rgba(248,81,73,.15);--rbd:rgba(248,81,73,.4);
+  --b2:#388bfd;--bbg:rgba(56,139,253,.15);--bbd:rgba(56,139,253,.4);
+  --pur:#a78bfa;--purbg:rgba(139,92,246,.15);--purbd:rgba(139,92,246,.4);
+  --mo:'JetBrains Mono',monospace;
+  --cell-min:68px;   /* auto-calculated by JS */
+  --cell-h:68px;     /* height = width for square cells */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── NAV ── */
+.topnav{height:52px;background:var(--s1);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 18px;gap:10px;flex-shrink:0;z-index:100}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.88rem;white-space:nowrap;margin-right:6px}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--g2),var(--b2))}
+#clinic-name{font-size:.78rem;font-weight:600;color:var(--g2);padding:3px 9px;
+  background:rgba(46,160,67,.1);border:1px solid rgba(46,160,67,.3);border-radius:6px;display:none}
+.nsep{flex:1}
+.nbtn{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:6px;
+  border:1px solid var(--bd);background:transparent;color:var(--dim);
+  font-family:inherit;font-size:.74rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+.nbtn:hover{color:var(--text);border-color:var(--b2)}
+.nbtn.prim{background:var(--bbg);border-color:var(--bbd);color:var(--b2)}
+.nbtn.prim:hover{background:rgba(56,139,253,.25)}
+.nbtn.set{border-color:var(--purbd);color:var(--pur)}
+.nbtn.set:hover{background:var(--purbg)}
+.nbtn.danger{border-color:var(--rbd);color:var(--r2)}
+.date-badge{font-size:.7rem;color:var(--dim);font-family:var(--mo);padding:3px 9px;
+  background:var(--s2);border-radius:5px;border:1px solid var(--bd)}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:210px 1fr 268px;height:calc(100vh - 52px);overflow:hidden}
+
+/* ── LEFT PANEL ── */
+.lpanel{background:var(--s1);border-right:1px solid var(--bd);overflow-y:auto;display:flex;flex-direction:column}
+.lpanel-head{padding:12px 14px;border-bottom:1px solid var(--bd);font-size:.7rem;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
+  display:flex;align-items:center;justify-content:space-between}
+.model-list{padding:6px}
+.mcard{padding:9px 11px;border-radius:8px;border:1px solid transparent;
+  cursor:pointer;margin-bottom:3px;transition:all .15s}
+.mcard:hover{background:var(--s2);border-color:var(--bd)}
+.mcard.on{background:var(--s2);border-color:var(--bbd)}
+.mc-name{font-size:.8rem;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.mc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mc-meta{font-size:.66rem;color:var(--dim);font-family:var(--mo)}
+.mc-stats{display:flex;gap:7px;margin-top:6px}
+.ms{display:flex;align-items:center;gap:3px;font-size:.65rem}
+.ms-dot{width:5px;height:5px;border-radius:50%}
+.mpill{font-size:.58rem;padding:1px 5px;border-radius:8px;font-weight:600}
+.mpill-s{background:var(--bbg);color:var(--b2);border:1px solid var(--bbd)}
+.mpill-t{background:var(--purbg);color:var(--pur);border:1px solid var(--purbd)}
+
+/* ── CENTER GRID ── */
+.cpanel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.chead{padding:12px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--s1)}
+.chead-name{font-size:1.05rem;font-weight:700}
+.chead-sub{font-size:.73rem;color:var(--dim);font-family:var(--mo)}
+.chead-stats{display:flex;gap:7px;margin-left:auto}
+.cstat{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;
+  font-size:.7rem;font-weight:600;border:1px solid}
+.cstat.g{background:var(--gbg);border-color:var(--gbd);color:var(--g2)}
+.cstat.y{background:var(--ybg);border-color:var(--ybd);color:var(--y2)}
+.cstat.r{background:var(--rbg);border-color:var(--rbd);color:var(--r2)}
+/* 빠른입력 */
+.qbar{padding:8px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:7px;flex-shrink:0;background:var(--s2)}
+.qbar-lbl{font-size:.7rem;color:var(--dim);white-space:nowrap}
+.qinp{flex:1;background:var(--s3);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 9px;font-family:var(--mo);font-size:.75rem;outline:none;transition:border-color .15s}
+.qinp:focus{border-color:var(--b2)}
+.qbtn{padding:5px 11px;border-radius:5px;border:1px solid var(--bd);background:var(--s3);
+  color:var(--dim);font-family:inherit;font-size:.72rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+.qbtn:hover{color:var(--text);border-color:var(--b2)}
+.qbtn.scan{background:var(--gbg);border-color:var(--gbd);color:var(--g2)}
+/* 범례 */
+.legbar{padding:7px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--s1);flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:4px;font-size:.68rem;color:var(--dim)}
+.lbox{width:13px;height:13px;border-radius:3px}
+.lg{background:var(--gbg);border:1px solid var(--gbd)}
+.ly{background:var(--ybg);border:1px solid var(--ybd)}
+.lr{background:var(--rbg);border:1px solid var(--rbd)}
+.ls{background:var(--bbg);border:1px solid var(--bbd)}
+.lsep{color:var(--mu);margin:0 2px}
+/* 줌 컨트롤 */
+.zoom-ctrl{display:flex;align-items:center;gap:3px;margin-left:auto}
+.zoom-btn{
+  width:22px;height:22px;border-radius:5px;border:1px solid var(--bd);
+  background:var(--s2);color:var(--dim);cursor:pointer;font-size:.82rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;font-family:inherit;
+}
+.zoom-btn:hover{color:var(--text);border-color:var(--b2);background:var(--s3)}
+.zoom-val{
+  font-size:.68rem;font-family:var(--mo);color:var(--dim);
+  min-width:32px;text-align:center;
+}
+/* 그리드 */
+.gscroll{flex:1;overflow:auto;padding:0;display:flex;flex-direction:column}
+
+/* 수술 요약 배지 */
+.sched-summary{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0;
+  padding:7px 18px;background:rgba(56,139,253,.06);
+  border-bottom:1px solid rgba(56,139,253,.2);
+}
+.ss-title{color:var(--b2);font-weight:600;font-size:.7rem;white-space:nowrap}
+.ss-item{
+  display:flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:10px;background:rgba(56,139,253,.12);
+  border:1px solid rgba(56,139,253,.3);color:var(--text);
+  font-family:var(--mo);font-size:.68rem;
+}
+.ss-dot{width:5px;height:5px;border-radius:50%;background:var(--b2);
+  flex-shrink:0;animation:blink 1.1s ease-in-out infinite}
+
+/* 단초점 그룹 */
+.sphere-wrap{flex:1;overflow:auto;padding:14px 16px 28px}
+.sg{margin-bottom:12px}
+.sg-head{
+  display:flex;align-items:center;gap:9px;margin-bottom:9px;
+  cursor:pointer;user-select:none;
+  padding:4px 6px;border-radius:7px;transition:background .15s;
+}
+.sg-head:hover{background:rgba(255,255,255,.04)}
+.sg-lbl{font-size:.64rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--dim);white-space:nowrap;font-family:var(--mo)}
+.sg-bar{flex:1;height:1px;background:var(--bd)}
+.sg-cnt{font-size:.63rem;font-family:var(--mo);color:var(--mu);white-space:nowrap}
+/* 접기 화살표 */
+.sg-arrow{
+  font-size:.62rem;color:var(--mu);transition:transform .2s;
+  flex-shrink:0;line-height:1;
+}
+.sg.collapsed .sg-arrow{transform:rotate(-90deg)}
+/* 그리드 접기 애니메이션 */
+.sg-body{
+  overflow:hidden;
+  transition:max-height .28s cubic-bezier(.4,0,.2,1),opacity .22s ease;
+  max-height:2000px;opacity:1;
+}
+.sg.collapsed .sg-body{max-height:0;opacity:0}
+
+/* ── CSS Grid auto-fill: 셀 크기 자동 최적화 핵심 ── */
+.sphere-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(var(--cell-min),1fr));
+  gap:6px;
+}
+
+/* 토릭 */
+.toric-outer{flex:1;overflow:auto;display:flex;flex-direction:column}
+.toric-sticky{
+  position:sticky;top:0;z-index:10;background:var(--s1);
+  border-bottom:2px solid var(--bd);flex-shrink:0;
+  display:flex;align-items:center;padding:10px 14px 10px 0;gap:6px;
+}
+.toric-corner{width:64px;flex-shrink:0;font-size:.58rem;color:var(--mu);
+  text-align:center;padding-right:6px;font-family:var(--mo)}
+.tcol-hdr{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:6px;padding:5px 4px;
+  background:var(--s2);border:1px solid var(--bd);font-family:var(--mo);
+}
+.tcol-cyl{font-size:.7rem;font-weight:700;color:var(--b2)}
+.tcol-sub{font-size:.57rem;color:var(--mu);margin-top:1px}
+.toric-body{padding:10px 14px 24px}
+.toric-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.trow-lbl{
+  width:62px;flex-shrink:0;text-align:right;padding-right:8px;
+  font-size:.72rem;font-weight:700;font-family:var(--mo);color:var(--dim);
+}
+
+/* ── CELL 공통 ── */
+.dcell{
+  position:relative;border-radius:9px;border:1px solid;
+  cursor:pointer;user-select:none;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:transform .1s,box-shadow .1s;
+  /* 크기: grid가 가로를 결정, aspect-ratio로 정사각형 유지 */
+  aspect-ratio:1/1;
+  width:100%;
+  min-width:var(--cell-min);
+  max-width:var(--cell-h);   /* 너무 커지는 것 방지 */
+}
+/* 토릭 셀은 정사각형 아닌 직사각형 */
+.toric-row .dcell{
+  aspect-ratio:unset;
+  width:auto;
+  min-width:unset;
+  max-width:unset;
+  height:var(--toric-h,50px);
+}
+.dcell::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.dcell:hover{transform:scale(1.09);z-index:3;box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.dcell:active{transform:scale(.96)}
+
+/* 상태별 */
+.dcell.g{
+  background:linear-gradient(155deg,rgba(46,160,67,.2) 0%,rgba(46,160,67,.07) 100%);
+  border-color:rgba(46,160,67,.45);
+}
+.dcell.g::before{background:linear-gradient(90deg,#2ea043,rgba(46,160,67,.3));}
+.dcell.y{
+  background:linear-gradient(155deg,rgba(210,153,34,.22) 0%,rgba(210,153,34,.07) 100%);
+  border-color:rgba(210,153,34,.5);
+}
+.dcell.y::before{background:linear-gradient(90deg,#d29922,rgba(210,153,34,.3));}
+.dcell.r{
+  background:linear-gradient(155deg,rgba(248,81,73,.2) 0%,rgba(248,81,73,.06) 100%);
+  border-color:rgba(248,81,73,.5);
+}
+.dcell.r::before{background:linear-gradient(90deg,#f85149,rgba(248,81,73,.3));}
+.dcell.e{background:var(--s2);border-color:var(--bd);}
+.dcell.e::before{background:var(--s3);}
+
+/* 도수 라벨 */
+.cell-d{
+  font-size:.62rem;font-weight:600;font-family:var(--mo);
+  line-height:1;margin-bottom:4px;letter-spacing:.3px;
+}
+.dcell.g .cell-d{color:rgba(46,160,67,.85)}
+.dcell.y .cell-d{color:rgba(210,153,34,.9)}
+.dcell.r .cell-d{color:rgba(248,81,73,.8)}
+.dcell.e .cell-d{color:var(--mu)}
+
+/* 재고 숫자 */
+.cell-n{
+  font-size:1.5rem;font-weight:700;font-family:var(--mo);
+  line-height:1;letter-spacing:-1px;
+}
+.dcell.g .cell-n{color:#2ea043}
+.dcell.y .cell-n{color:#d29922}
+.dcell.r .cell-n{color:#f85149}
+.dcell.e .cell-n{color:var(--mu);font-size:1.1rem}
+
+/* 수술 예정 점 */
+.cell-sched-dot{
+  position:absolute;top:6px;right:6px;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--b2);box-shadow:0 0 8px var(--b2);
+  animation:blink 1.1s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.65)}}
+
+/* 수술 후 재고 표시 */
+.cell-after{
+  position:absolute;bottom:5px;
+  font-size:.55rem;font-family:var(--mo);color:var(--b2);
+  background:rgba(56,139,253,.18);padding:1px 5px;
+  border-radius:3px;font-weight:600;line-height:1.4;
+}
+
+/* 수술 후 부족 경고 */
+.dcell.sched-r{
+  border-color:#f85149!important;
+  animation:pborder .9s infinite;
+}
+@keyframes pborder{0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,.5)}50%{box-shadow:0 0 0 4px rgba(248,81,73,.12)}}
+
+/* 토릭 셀 — 구면+CYL 조합 셀 (단초점과 동일한 auto-fill 그리드 사용) */
+/* aspect-ratio를 1/1 대신 약간 높게 설정해 3행 텍스트 수용 */
+.toric-grid .dcell{
+  aspect-ratio: 3/4;   /* 가로보다 세로가 약간 긴 비율 */
+  min-width: var(--cell-min);
+  max-width: var(--cell-h);
+}
+/* 토릭 셀 내부 텍스트 레이아웃 */
+.toric-grid .dcell{
+  padding: 4px 2px;
+  gap: 1px;
+}
+/* CYL 라벨 — 셀 가운데 */
+.cell-cyl{
+  font-size:.58rem;font-weight:700;font-family:var(--mo);
+  line-height:1;letter-spacing:.2px;
+  padding:1px 5px;border-radius:3px;margin:1px 0;
+}
+.dcell.g .cell-cyl{color:rgba(56,139,253,.95);background:rgba(56,139,253,.14)}
+.dcell.y .cell-cyl{color:rgba(56,139,253,.95);background:rgba(56,139,253,.12)}
+.dcell.r .cell-cyl{color:rgba(56,139,253,.85);background:rgba(56,139,253,.1)}
+.dcell.e .cell-cyl{color:var(--mu);background:var(--s3)}
+
+/* 토릭 그리드 — CYL 그룹 구분선 + 접기 */
+.toric-cyl-group{margin-bottom:12px}
+.toric-cyl-head{
+  display:flex;align-items:center;gap:9px;margin-bottom:8px;
+  cursor:pointer;user-select:none;
+  padding:4px 6px;border-radius:7px;transition:background .15s;
+}
+.toric-cyl-head:hover{background:rgba(255,255,255,.04)}
+.toric-cyl-badge{
+  font-size:.68rem;font-weight:700;font-family:var(--mo);
+  color:var(--b2);padding:2px 10px;border-radius:10px;
+  background:var(--bbg);border:1px solid var(--bbd);
+  white-space:nowrap;
+}
+.toric-cyl-bar{flex:1;height:1px;background:var(--bd)}
+.toric-cyl-cnt{font-size:.63rem;font-family:var(--mo);color:var(--mu);white-space:nowrap}
+.toric-cyl-arrow{
+  font-size:.62rem;color:var(--mu);transition:transform .2s;flex-shrink:0;line-height:1;
+}
+.toric-cyl-group.collapsed .toric-cyl-arrow{transform:rotate(-90deg)}
+.toric-cyl-body{
+  overflow:hidden;
+  transition:max-height .28s cubic-bezier(.4,0,.2,1),opacity .22s ease;
+  max-height:2000px;opacity:1;
+}
+.toric-cyl-group.collapsed .toric-cyl-body{max-height:0;opacity:0}
+
+/* 폰트 스케일 — 토릭 그리드 */
+.toric-grid[data-sz="xs"] .dcell .cell-d{font-size:.5rem}
+.toric-grid[data-sz="xs"] .dcell .cell-cyl{font-size:.52rem;padding:1px 3px}
+.toric-grid[data-sz="xs"] .dcell .cell-n{font-size:.95rem}
+
+.toric-grid[data-sz="sm"] .dcell .cell-d{font-size:.55rem}
+.toric-grid[data-sz="sm"] .dcell .cell-cyl{font-size:.56rem}
+.toric-grid[data-sz="sm"] .dcell .cell-n{font-size:1.1rem}
+
+.toric-grid[data-sz="md"] .dcell .cell-d{font-size:.6rem}
+.toric-grid[data-sz="md"] .dcell .cell-cyl{font-size:.6rem}
+.toric-grid[data-sz="md"] .dcell .cell-n{font-size:1.3rem}
+
+.toric-grid[data-sz="lg"] .dcell .cell-d{font-size:.66rem}
+.toric-grid[data-sz="lg"] .dcell .cell-cyl{font-size:.64rem}
+.toric-grid[data-sz="lg"] .dcell .cell-n{font-size:1.55rem}
+
+.toric-grid[data-sz="xl"] .dcell .cell-d{font-size:.72rem}
+.toric-grid[data-sz="xl"] .dcell .cell-cyl{font-size:.7rem}
+.toric-grid[data-sz="xl"] .dcell .cell-n{font-size:1.8rem}
+.toric-grid[data-sz="xl"] .dcell .cell-after{font-size:.58rem}
+
+/* ── 셀 크기별 폰트 스케일 (JS가 data-cellsize 속성으로 제어) ── */
+.sphere-grid[data-sz="xs"] .dcell .cell-d{font-size:.52rem}
+.sphere-grid[data-sz="xs"] .dcell .cell-n{font-size:1.0rem}
+.sphere-grid[data-sz="xs"] .dcell .cell-sched-dot{width:5px;height:5px}
+.sphere-grid[data-sz="xs"] .dcell .cell-after{font-size:.48rem;padding:1px 3px;bottom:2px}
+
+.sphere-grid[data-sz="sm"] .dcell .cell-d{font-size:.58rem}
+.sphere-grid[data-sz="sm"] .dcell .cell-n{font-size:1.2rem}
+
+.sphere-grid[data-sz="md"] .dcell .cell-d{font-size:.62rem}
+.sphere-grid[data-sz="md"] .dcell .cell-n{font-size:1.5rem}
+
+.sphere-grid[data-sz="lg"] .dcell .cell-d{font-size:.68rem}
+.sphere-grid[data-sz="lg"] .dcell .cell-n{font-size:1.75rem}
+
+.sphere-grid[data-sz="xl"] .dcell .cell-d{font-size:.74rem}
+.sphere-grid[data-sz="xl"] .dcell .cell-n{font-size:2rem}
+.sphere-grid[data-sz="xl"] .dcell .cell-after{font-size:.62rem}
+
+/* ── RIGHT PANEL ── */
+.rpanel{background:var(--s1);border-left:1px solid var(--bd);overflow-y:auto;display:flex;flex-direction:column}
+.rsec{border-bottom:1px solid var(--bd)}
+.rsec-head{padding:11px 13px;display:flex;align-items:center;justify-content:space-between}
+.rsec-title{font-size:.7rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+.rsec-body{padding:0 11px 11px}
+/* 일정 입력 */
+.si-row{display:flex;gap:4px;margin-bottom:6px}
+.si{background:var(--s2);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 7px;font-family:var(--mo);font-size:.7rem;outline:none;transition:border-color .15s}
+.si:focus{border-color:var(--b2)}
+.si-sel{background:var(--s2);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 7px;font-family:inherit;font-size:.7rem;outline:none}
+.si-add{padding:5px 8px;border-radius:5px;border:1px solid var(--bbd);
+  background:var(--bbg);color:var(--b2);font-family:inherit;font-size:.7rem;cursor:pointer}
+.si-add:hover{background:rgba(56,139,253,.25)}
+/* 일정 아이템 */
+.sitem{display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--s2);
+  border-radius:5px;border:1px solid var(--bd);margin-bottom:3px}
+.sit-lens{font-size:.67rem;font-weight:600;color:var(--b2);font-family:var(--mo)}
+.sit-d{font-size:.76rem;font-weight:700;font-family:var(--mo)}
+.sit-eye{font-size:.63rem;color:var(--dim)}
+.sit-del{margin-left:auto;cursor:pointer;color:var(--mu);font-size:.78rem;transition:color .15s}
+.sit-del:hover{color:var(--r2)}
+.sit-warn{font-size:.6rem;color:var(--r2);margin-left:auto}
+/* 주문 아이템 */
+.oitem{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;margin-bottom:3px;border:1px solid}
+.oitem.urg{border-color:var(--rbd);background:var(--rbg)}
+.oitem.warn{border-color:var(--ybd);background:var(--ybg)}
+.oi-info{flex:1}
+.oi-model{font-size:.63rem;color:var(--dim)}
+.oi-d{font-size:.74rem;font-weight:700;font-family:var(--mo)}
+.oi-stock{font-size:.66rem;font-family:var(--mo);color:var(--dim)}
+.badge{font-size:.6rem;padding:2px 6px;border-radius:8px;font-weight:700;white-space:nowrap}
+.badge-r{background:var(--rbg);color:var(--r2);border:1px solid var(--rbd)}
+.badge-y{background:var(--ybg);color:var(--y2);border:1px solid var(--ybd)}
+.empty-msg{font-size:.73rem;color:var(--mu);text-align:center;padding:14px 0}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;
+  display:flex;align-items:center;justify-content:center}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:11px;
+  padding:22px;min-width:270px;box-shadow:0 16px 48px rgba(0,0,0,.6)}
+.modal-t{font-size:.86rem;font-weight:700;margin-bottom:3px}
+.modal-s{font-size:.7rem;color:var(--dim);margin-bottom:16px}
+.modal-d{font-size:1.9rem;font-weight:700;font-family:var(--mo);text-align:center;
+  margin-bottom:14px;padding:11px;background:var(--s2);border-radius:7px;border:1px solid var(--bd)}
+.sctrl{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:14px}
+.sc-btn{width:38px;height:38px;border-radius:7px;border:1px solid var(--bd);background:var(--s2);
+  color:var(--text);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sc-btn:hover{background:var(--s3);border-color:var(--b2)}
+.sc-val{font-size:2.1rem;font-weight:700;font-family:var(--mo);width:78px;text-align:center;
+  background:var(--s2);border:1px solid var(--bd);border-radius:7px;color:var(--text);outline:none;padding:3px}
+.sc-val:focus{border-color:var(--b2)}
+.mac{display:flex;gap:7px}
+.ma{flex:1;padding:8px;border-radius:6px;border:none;font-family:inherit;
+  font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
+.ma.cancel{background:var(--s2);color:var(--dim);border:1px solid var(--bd)}
+.ma.cancel:hover{color:var(--text)}
+.ma.confirm{background:var(--bbg);color:var(--b2);border:1px solid var(--bbd)}
+.ma.confirm:hover{background:rgba(56,139,253,.25)}
+
+/* ── SETTINGS OVERLAY ── */
+.sov{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.65);
+  backdrop-filter:blur(4px);display:none}
+.sov.open{display:block}
+.spanel{position:absolute;right:0;top:0;bottom:0;width:800px;
+  background:var(--s1);border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;animation:slin .2s ease}
+@keyframes slin{from{transform:translateX(36px);opacity:.5}to{transform:translateX(0);opacity:1}}
+.sp-head{height:52px;display:flex;align-items:center;padding:0 20px;gap:10px;
+  border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--s2)}
+.sp-head-title{font-weight:700;font-size:.92rem}
+.sp-head-sub{font-size:.72rem;color:var(--dim)}
+.sp-x{margin-left:auto;width:28px;height:28px;border-radius:5px;border:1px solid var(--bd);
+  background:transparent;color:var(--dim);cursor:pointer;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sp-x:hover{color:var(--text);border-color:var(--b2)}
+.sp-tabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--s2);padding:0 18px}
+.sp-tab{padding:9px 14px;font-size:.76rem;font-weight:500;color:var(--dim);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.sp-tab.on{color:var(--b2);border-bottom-color:var(--b2)}
+.sp-tab:hover:not(.on){color:var(--dim)}
+.sp-body{flex:1;overflow-y:auto;padding:18px}
+
+/* ── LABEL EDITOR ── */
+.le-sec{margin-bottom:24px}
+.le-sec-head{display:flex;align-items:center;gap:8px;font-size:.67rem;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
+  margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--bd)}
+.le-table{width:100%;border-collapse:collapse}
+.le-table tr:hover td{background:rgba(255,255,255,.02)}
+.le-table td{padding:4px 3px;vertical-align:middle}
+.le-lbl-cell{width:175px;font-size:.74rem;color:var(--dim);padding-right:10px;line-height:1.3}
+.le-lbl-hint{font-size:.63rem;color:var(--mu);margin-top:1px;font-family:var(--mo)}
+.le-inp{width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 8px;font-size:.77rem;font-family:inherit;
+  outline:none;transition:all .15s}
+.le-inp:focus{border-color:var(--b2);background:rgba(56,139,253,.04)}
+.le-inp.chg{border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.03)}
+.le-rst{padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:transparent;
+  color:var(--mu);cursor:pointer;font-size:.67rem;white-space:nowrap;transition:all .15s;margin-left:5px}
+.le-rst:hover{color:var(--r2);border-color:var(--rbd)}
+
+/* ── MODEL CARDS (settings) ── */
+.smc{background:var(--s2);border:1px solid var(--bd);border-radius:9px;
+  margin-bottom:10px;overflow:hidden;transition:border-color .15s}
+.smc:hover{border-color:var(--bbd)}
+.smc.exp{border-color:var(--bbd)}
+.smc-h{display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer;user-select:none}
+.smc-drag{color:var(--mu);font-size:.82rem;cursor:grab}
+.smc-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.15)}
+.smc-info{flex:1;min-width:0}
+.smc-name{font-size:.82rem;font-weight:600}
+.smc-meta{font-size:.66rem;color:var(--dim);font-family:var(--mo);margin-top:1px}
+.smc-arr{font-size:.68rem;color:var(--mu);transition:transform .18s}
+.smc-arr.open{transform:rotate(90deg)}
+.smc-body{display:none;padding:0 14px 14px;border-top:1px solid var(--bd)}
+.smc-body.open{display:block}
+/* 내부 편집 폼 */
+.eg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px}
+.eg2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+.ef{display:flex;flex-direction:column;gap:3px}
+.efl{font-size:.63rem;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase}
+.efi{width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 8px;font-family:var(--mo);font-size:.76rem;outline:none;transition:border-color .15s}
+.efi:focus{border-color:var(--b2)}
+.esel{width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:5px 8px;font-family:inherit;font-size:.76rem;outline:none}
+.esel:focus{border-color:var(--b2)}
+.tt-row{display:flex;gap:5px;margin-top:5px}
+.tt{flex:1;padding:5px;border-radius:5px;border:1px solid var(--bd);background:var(--s3);
+  color:var(--dim);text-align:center;cursor:pointer;font-size:.7rem;transition:all .15s}
+.tt:hover{color:var(--text)}
+.tt.on{background:var(--bbg);border-color:var(--bbd);color:var(--b2);font-weight:600}
+.step-row{display:flex;gap:5px;margin-top:5px}
+.stp{flex:1;padding:4px;border-radius:5px;border:1px solid var(--bd);background:var(--s3);
+  color:var(--dim);text-align:center;cursor:pointer;font-size:.68rem;transition:all .15s}
+.stp:hover{color:var(--text)}
+.stp.on{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.4);color:#34d399;font-weight:600}
+.cpicker{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.cp{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.cp:hover{transform:scale(1.15)}
+.cp.on{border-color:#fff;transform:scale(1.15)}
+.cyl-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.cyl-t{padding:3px 8px;border-radius:10px;border:1px solid var(--bd);background:var(--s3);
+  color:var(--dim);font-size:.68rem;font-family:var(--mo);cursor:pointer;transition:all .15s}
+.cyl-t:hover{color:var(--text)}
+.cyl-t.on{background:var(--purbg);border-color:var(--purbd);color:var(--pur);font-weight:600}
+.diop-prev{display:flex;flex-wrap:wrap;gap:2px;margin-top:6px;max-height:56px;overflow:hidden}
+.dc{padding:2px 5px;border-radius:3px;font-size:.6rem;font-family:var(--mo);
+  background:var(--s3);border:1px solid var(--bd);color:var(--mu)}
+.dc-more{font-size:.6rem;color:var(--mu);padding:2px 4px;align-self:center}
+.smc-acts{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)}
+.sa{padding:5px 11px;border-radius:5px;border:1px solid var(--bd);background:transparent;
+  color:var(--dim);font-family:inherit;font-size:.71rem;cursor:pointer;transition:all .15s}
+.sa:hover{color:var(--text);border-color:var(--b2)}
+.sa.prim{color:var(--b2);border-color:var(--bbd);background:var(--bbg)}
+.sa.prim:hover{background:rgba(56,139,253,.25)}
+.sa.ok{color:#34d399;border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.1)}
+.sa.ok:hover{background:rgba(52,211,153,.2)}
+.sa.danger{color:var(--r2);border-color:var(--rbd);background:var(--rbg)}
+.sa.danger:hover{background:rgba(248,81,73,.25)}
+
+/* ── GLOBAL SETTINGS TAB ── */
+.gs{margin-bottom:20px}
+.gs-title{font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--dim);margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.gs-title::after{content:'';flex:1;height:1px;background:var(--bd)}
+.gs-row{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px;background:var(--s2);border-radius:6px;border:1px solid var(--bd);margin-bottom:5px}
+.gs-lbl{font-size:.78rem;color:var(--dim)}
+.gs-inp{background:var(--s3);border:1px solid var(--bd);color:var(--text);
+  border-radius:5px;padding:4px 7px;font-family:var(--mo);font-size:.76rem;
+  outline:none;width:80px;text-align:right}
+.gs-inp:focus{border-color:var(--b2)}
+
+/* ── DATA TAB ── */
+.dbtn-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.dbtn{padding:7px 14px;border-radius:6px;border:1px solid var(--bd);
+  background:var(--s2);color:var(--dim);font-family:inherit;font-size:.74rem;cursor:pointer;transition:all .15s}
+.dbtn:hover{color:var(--text);border-color:var(--b2)}
+.dbtn.ok{background:var(--gbg);border-color:var(--gbd);color:var(--g2)}
+.dbtn.danger{background:var(--rbg);border-color:var(--rbd);color:var(--r2)}
+.hint-box{padding:9px 12px;background:var(--s2);border-radius:6px;border:1px solid var(--bd);
+  font-size:.71rem;color:var(--mu);line-height:1.6}
+
+/* ── SCAN MODAL ── */
+.scan-ta{width:100%;height:110px;background:var(--s2);border:1px solid var(--bd);
+  color:var(--text);border-radius:7px;padding:9px;font-family:var(--mo);
+  font-size:.8rem;resize:none;outline:none;margin-bottom:9px}
+.scan-ta:focus{border-color:var(--b2)}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(-16px);
+  background:var(--s2);border:1px solid var(--bd);border-radius:7px;
+  padding:8px 15px;font-size:.76rem;z-index:999;opacity:0;transition:all .28s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--gbd);color:var(--g2)}
+.toast.err{border-color:var(--rbd);color:var(--r2)}
+
+/* ── ORDER MODAL LIST ── */
+.om-item{display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--s2);
+  border-radius:5px;border:1px solid var(--bd);margin-bottom:4px}
+
+@media print{
+  .topnav,.lpanel,.rpanel,.qbar{display:none!important}
+  .layout{display:block}.cpanel{overflow:visible;height:auto}
+  body{overflow:auto}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="topnav">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <span data-label="sys_title">IOL 렌즈 재고 관리</span>
+  </div>
+  <div id="clinic-name" data-label="sys_clinic"></div>
+  <span class="date-badge" id="date-badge">-</span>
+  <div class="nsep"></div>
+  <button class="nbtn set" onclick="openSettings()"><span data-label="btn_settings">⚙ 설정</span></button>
+  <button class="nbtn" onclick="openModelModal(null)"><span data-label="btn_add_model">＋ 모델 추가</span></button>
+  <button class="nbtn prim" onclick="doExportOrder()"><span data-label="btn_export_order">📋 주문서 출력</span></button>
+  <button class="nbtn danger" onclick="resetAll()"><span data-label="btn_reset">초기화</span></button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT -->
+  <div class="lpanel">
+    <div class="lpanel-head">
+      <span data-label="panel_title">렌즈 모델</span>
+      <button class="nbtn" style="font-size:.64rem;padding:2px 6px" onclick="openModelModal(null)">＋</button>
+    </div>
+    <div class="model-list" id="model-list"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="cpanel">
+    <div class="chead" id="chead">
+      <div>
+        <div class="chead-name" id="chead-name">모델을 선택하세요</div>
+        <div class="chead-sub" id="chead-sub"></div>
+      </div>
+      <div class="chead-stats" id="chead-stats"></div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <button class="nbtn" style="font-size:.68rem;padding:3px 9px" onclick="collapseAll()" title="전체 접기">− 전체 접기</button>
+        <button class="nbtn" style="font-size:.68rem;padding:3px 9px" onclick="expandAll()" title="전체 펼치기">+ 전체 펼치기</button>
+        <button class="nbtn" onclick="editCurModel()"><span data-label="btn_edit_model">✏ 모델 설정</span></button>
+      </div>
+    </div>
+    <div class="qbar">
+      <span class="qbar-lbl" data-label="quick_label">빠른 입력:</span>
+      <input class="qinp" id="qinp" data-label-ph="quick_placeholder"
+        placeholder="예) 20.0D 3  또는  18.5 +1.50 2  또는  -1 (사용)"
+        onkeydown="if(event.key==='Enter')applyQuick()">
+      <button class="qbtn" onclick="applyQuick()"><span data-label="btn_quick_apply">적용</span></button>
+      <button class="qbtn scan" onclick="openScan()"><span data-label="btn_quick_scan">📷 스캔 입력</span></button>
+    </div>
+    <div class="legbar">
+      <div class="leg"><div class="lbox lg"></div><span data-label="leg_green">충분</span>&nbsp;(2개↑)</div>
+      <div class="leg"><div class="lbox ly"></div><span data-label="leg_yellow">주문필요</span>&nbsp;(1개)</div>
+      <div class="leg"><div class="lbox lr"></div><span data-label="leg_red">재고없음</span>&nbsp;(0개)</div>
+      <div class="leg"><div class="lbox ls"></div><span data-label="leg_sched">오늘 수술 예정</span></div>
+      <span class="lsep">|</span>
+      <div class="leg" id="min-stock-lbl"><span data-label="leg_min_prefix">최소재고</span>: 1개</div>
+      <div class="zoom-ctrl">
+        <button class="zoom-btn" onclick="adjustZoom(-1)" title="셀 축소">−</button>
+        <span class="zoom-val" id="zoom-val">100%</span>
+        <button class="zoom-btn" onclick="adjustZoom(+1)" title="셀 확대">＋</button>
+        <button class="zoom-btn" onclick="adjustZoom(0)" title="자동 맞춤" style="width:auto;padding:0 6px;font-size:.62rem">맞춤</button>
+      </div>
+    </div>
+    <div class="gscroll" id="gscroll">
+      <div style="color:var(--mu);text-align:center;margin-top:56px;font-size:.83rem"
+        data-label="grid_empty">왼쪽에서 렌즈 모델을 선택하세요</div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="rpanel">
+    <!-- 수술 일정 -->
+    <div class="rsec">
+      <div class="rsec-head">
+        <div class="rsec-title" data-label="panel_sched_title">📅 오늘 수술 일정</div>
+        <button class="nbtn" style="font-size:.63rem;padding:2px 6px" onclick="clearSched()">
+          <span data-label="btn_sched_clear">전체삭제</span>
+        </button>
+      </div>
+      <div class="rsec-body">
+        <div class="si-row">
+          <select class="si-sel" id="sched-model" style="flex:1;min-width:0"></select>
+        </div>
+        <div class="si-row">
+          <input class="si" id="sched-sph" style="flex:1;min-width:0"
+            data-label-ph="sched_sph_ph" placeholder="구면 (예:20.0)">
+          <input class="si" id="sched-cyl" style="width:52px"
+            data-label-ph="sched_cyl_ph" placeholder="CYL">
+          <select class="si-sel" id="sched-eye">
+            <option data-label-opt="eye_r">우안</option>
+            <option data-label-opt="eye_l">좌안</option>
+            <option data-label-opt="eye_b">양안</option>
+          </select>
+          <button class="si-add" onclick="addSched()"><span data-label="btn_sched_add">＋</span></button>
+        </div>
+        <div id="sched-list"></div>
+      </div>
+    </div>
+    <!-- 주문 필요 -->
+    <div class="rsec" style="flex:1">
+      <div class="rsec-head">
+        <div class="rsec-title" data-label="panel_order_title">🚨 주문 필요</div>
+        <button class="nbtn" style="font-size:.63rem;padding:2px 6px" onclick="doExportOrder()">
+          <span data-label="btn_order_print">출력</span>
+        </button>
+      </div>
+      <div class="rsec-body" id="order-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 재고 수정 모달 -->
+<div class="overlay" id="stock-modal" style="display:none" onclick="if(event.target===this)closeStockModal()">
+  <div class="modal">
+    <div class="modal-t" id="sm-title">재고 수정</div>
+    <div class="modal-s" id="sm-sub"></div>
+    <div class="modal-d" id="sm-diopter"></div>
+    <div class="sctrl">
+      <button class="sc-btn" onclick="adjStock(-1)">−</button>
+      <input class="sc-val" type="number" id="sc-val" min="0" max="99" value="0" oninput="clampVal()">
+      <button class="sc-btn" onclick="adjStock(1)">＋</button>
+    </div>
+    <div class="mac">
+      <button class="ma cancel" onclick="closeStockModal()"><span data-label="btn_modal_cancel">취소</span></button>
+      <button class="ma confirm" onclick="confirmStock()"><span data-label="btn_modal_save">저장</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 스캔 모달 -->
+<div class="overlay" id="scan-modal" style="display:none" onclick="if(event.target===this)closeScan()">
+  <div class="modal" style="min-width:360px">
+    <div class="modal-t" data-label="scan_title">📷 스캔 / 수기 입력</div>
+    <div class="modal-s" data-label="scan_sub">렌즈 박스의 도수를 직접 입력하거나 스캔하세요</div>
+    <textarea class="scan-ta" id="scan-text"
+      placeholder="예시&#10;20.0D&#10;18.5 +1.50&#10;22.0D x2&#10;20.0D -1 (사용)"></textarea>
+    <div style="font-size:.68rem;color:var(--dim);margin-bottom:12px" data-label="scan_hint">
+      • 숫자만: +1 &nbsp; • 숫자 x2: +2개 &nbsp; • -1: 사용처리
+    </div>
+    <div class="mac">
+      <button class="ma cancel" onclick="closeScan()"><span data-label="btn_scan_cancel">취소</span></button>
+      <button class="ma confirm" onclick="applyScan()"><span data-label="btn_scan_apply">적용</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 모델 추가 모달 -->
+<div class="overlay" id="model-modal" style="display:none" onclick="if(event.target===this)closeModelModal()">
+  <div class="modal" style="min-width:460px;max-height:85vh;overflow-y:auto">
+    <div class="modal-t" id="mm-title">렌즈 모델 추가</div>
+    <div class="modal-s" id="mm-sub">새 IOL 렌즈 모델을 등록합니다</div>
+    <div class="eg3">
+      <div class="ef"><div class="efl">모델 이름</div>
+        <input class="efi" id="mm-name" placeholder="아이핸스"></div>
+      <div class="ef"><div class="efl">약칭/모델번호</div>
+        <input class="efi" id="mm-abbr" placeholder="ICB00"></div>
+      <div class="ef"><div class="efl">제조사</div>
+        <input class="efi" id="mm-brand" placeholder="J&J, Alcon..."></div>
+    </div>
+    <div class="eg2" style="margin-top:9px">
+      <div class="ef"><div class="efl">렌즈 유형</div>
+        <div class="tt-row">
+          <div class="tt on" id="mm-type-sphere" onclick="mmSetType('sphere')">단초점/다초점</div>
+          <div class="tt" id="mm-type-toric" onclick="mmSetType('toric')">토릭(난시)</div>
+        </div>
+      </div>
+      <div class="ef"><div class="efl">최소 재고 기준</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+          <input class="efi" type="number" id="mm-min" value="1" min="0" style="width:65px">
+          <span style="font-size:.7rem;color:var(--mu)">개 이상 = 충분</span>
+        </div>
+      </div>
+    </div>
+    <div class="ef" style="margin-top:9px"><div class="efl">컬러</div>
+      <div class="cpicker" id="mm-cpicker"></div></div>
+    <hr style="border:none;border-top:1px solid var(--bd);margin:13px 0">
+    <div style="font-size:.66rem;font-weight:700;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">도수 범위</div>
+    <div class="eg3">
+      <div class="ef"><div class="efl">구면 최소 (D)</div>
+        <input class="efi" type="number" id="mm-smin" value="9.0" step="0.5"></div>
+      <div class="ef"><div class="efl">구면 최대 (D)</div>
+        <input class="efi" type="number" id="mm-smax" value="28.0" step="0.5"></div>
+      <div class="ef"><div class="efl">간격 (D)</div>
+        <div class="step-row" id="mm-step">
+          <div class="stp on" onclick="mmSetStep(0.5,this)">0.5D</div>
+          <div class="stp" onclick="mmSetStep(0.25,this)">0.25D</div>
+          <div class="stp" onclick="mmSetStep(1.0,this)">1.0D</div>
+        </div>
+      </div>
+    </div>
+    <div id="mm-cyl-area" style="display:none;margin-top:9px">
+      <div class="ef"><div class="efl">난시(CYL) 조합</div>
+        <div class="cyl-tags" id="mm-cyls"></div>
+      </div>
+    </div>
+    <div class="mac" style="margin-top:14px">
+      <button class="ma cancel" onclick="closeModelModal()">취소</button>
+      <button class="ma" id="mm-del" style="display:none;background:var(--rbg);color:var(--r2);border:1px solid var(--rbd)" onclick="deleteModelMM()">삭제</button>
+      <button class="ma confirm" onclick="saveModelMM()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 설정 패널 -->
+<div class="sov" id="sov" onclick="if(event.target===this)closeSettings()">
+  <div class="spanel">
+    <div class="sp-head">
+      <span style="font-size:1.05rem">⚙</span>
+      <div class="sp-head-title">관리자 설정</div>
+      <div class="sp-head-sub">모든 항목 자유 편집</div>
+      <button class="sp-x" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="sp-tabs">
+      <div class="sp-tab on" id="stab-models" onclick="switchSTab('models')">💎 렌즈 모델</div>
+      <div class="sp-tab" id="stab-labels" onclick="switchSTab('labels')">🖊 화면 텍스트</div>
+      <div class="sp-tab" id="stab-global" onclick="switchSTab('global')">🔧 기준 설정</div>
+      <div class="sp-tab" id="stab-data" onclick="switchSTab('data')">💾 데이터</div>
+    </div>
+    <div class="sp-body">
+      <div id="sp-models"></div>
+      <div id="sp-labels" style="display:none"></div>
+      <div id="sp-global" style="display:none"></div>
+      <div id="sp-data" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════
+// COLORS & CONSTANTS
+// ═══════════════════════════════════════
+const COLORS=['#2ea043','#388bfd','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#10b981','#f97316','#6366f1'];
+const CYL_OPTS=[0.75,1.00,1.25,1.50,1.75,2.00,2.25,2.57,3.00];
+
+// ═══════════════════════════════════════
+// DEFAULT LABELS — 화면에 보이는 모든 텍스트
+// ═══════════════════════════════════════
+const DL = {
+  // 시스템
+  sys_title:          'IOL 렌즈 재고 관리',
+  sys_clinic:         '',
+  // 상단 버튼
+  btn_settings:       '⚙ 설정',
+  btn_add_model:      '＋ 모델 추가',
+  btn_export_order:   '📋 주문서 출력',
+  btn_reset:          '초기화',
+  btn_edit_model:     '✏ 모델 설정',
+  // 좌측 패널
+  panel_title:        '렌즈 모델',
+  // 빠른 입력
+  quick_label:        '빠른 입력:',
+  quick_placeholder:  '예) 20.0D 3  또는  18.5 +1.50 2  또는  -1 (사용)',
+  btn_quick_apply:    '적용',
+  btn_quick_scan:     '📷 스캔 입력',
+  // 범례
+  leg_green:          '충분',
+  leg_yellow:         '주문필요',
+  leg_red:            '재고없음',
+  leg_sched:          '오늘 수술 예정',
+  leg_min_prefix:     '최소재고',
+  // 그리드
+  grid_empty:         '왼쪽에서 렌즈 모델을 선택하세요',
+  grid_stat_green:    '충분',
+  grid_stat_yellow:   '주문필요',
+  grid_stat_red:      '없음',
+  // 일정 패널
+  panel_sched_title:  '📅 오늘 수술 일정',
+  btn_sched_clear:    '전체삭제',
+  sched_sph_ph:       '구면 (예:20.0)',
+  sched_cyl_ph:       'CYL',
+  eye_r:              '우안',
+  eye_l:              '좌안',
+  eye_b:              '양안',
+  btn_sched_add:      '＋',
+  sched_empty:        '수술 일정 없음',
+  // 주문 패널
+  panel_order_title:  '🚨 주문 필요',
+  btn_order_print:    '출력',
+  order_empty:        '✅ 주문 필요 품목 없음',
+  badge_urgent:       '긴급',
+  badge_order:        '주문',
+  // 재고 모달
+  btn_modal_cancel:   '취소',
+  btn_modal_save:     '저장',
+  // 스캔 모달
+  scan_title:         '📷 스캔 / 수기 입력',
+  scan_sub:           '렌즈 박스의 도수를 직접 입력하거나 스캔하세요',
+  scan_hint:          '• 숫자만: +1  • 숫자 x2: +2개  • -1: 사용처리',
+  btn_scan_cancel:    '취소',
+  btn_scan_apply:     '적용',
+  // 주문서 문서
+  doc_title:          '🏥 IOL 렌즈 주문 요청서',
+  doc_writer:         '작성자',
+  doc_checker:        '확인자',
+  doc_approver:       '승인자',
+  // 설정 탭 이름
+  stab_models:        '💎 렌즈 모델',
+  stab_labels:        '🖊 화면 텍스트',
+  stab_global:        '🔧 기준 설정',
+  stab_data:          '💾 데이터',
+};
+
+// 라벨 섹션 정의 (설정 탭 UI 구성용)
+const LABEL_SECS = [
+  { id:'sys', icon:'🏥', title:'병원 & 시스템 기본',
+    keys:[
+      {k:'sys_clinic',  l:'병원명',      h:'비워두면 숨김. 상단에 초록 뱃지로 표시'},
+      {k:'sys_title',   l:'시스템 제목', h:'상단 로고 옆 제목'},
+    ]
+  },
+  { id:'nav', icon:'🔘', title:'상단 내비게이션 버튼',
+    keys:[
+      {k:'btn_settings',     l:'설정 버튼'},
+      {k:'btn_add_model',    l:'모델 추가 버튼'},
+      {k:'btn_export_order', l:'주문서 출력 버튼'},
+      {k:'btn_reset',        l:'초기화 버튼'},
+      {k:'btn_edit_model',   l:'모델 설정 버튼 (그리드 우측)'},
+    ]
+  },
+  { id:'legend', icon:'🎨', title:'범례 & 재고 상태 텍스트',
+    keys:[
+      {k:'leg_green',      l:'🟢 충분 라벨'},
+      {k:'leg_yellow',     l:'🟡 주문필요 라벨'},
+      {k:'leg_red',        l:'🔴 재고없음 라벨'},
+      {k:'leg_sched',      l:'🔵 수술예정 라벨'},
+      {k:'leg_min_prefix', l:'최소재고 앞 텍스트'},
+      {k:'grid_stat_green',  l:'그리드 통계 — 충분'},
+      {k:'grid_stat_yellow', l:'그리드 통계 — 주문필요'},
+      {k:'grid_stat_red',    l:'그리드 통계 — 없음'},
+      {k:'grid_empty',     l:'모델 미선택 안내문구'},
+    ]
+  },
+  { id:'qbar', icon:'⚡', title:'빠른 입력 바',
+    keys:[
+      {k:'quick_label',       l:'라벨 텍스트'},
+      {k:'btn_quick_apply',   l:'적용 버튼'},
+      {k:'btn_quick_scan',    l:'스캔 버튼'},
+      {k:'quick_placeholder', l:'입력란 안내문구 (placeholder)', h:'입력란 회색 안내문'},
+    ]
+  },
+  { id:'sched', icon:'📅', title:'수술 일정 패널',
+    keys:[
+      {k:'panel_sched_title', l:'패널 제목'},
+      {k:'btn_sched_clear',   l:'전체삭제 버튼'},
+      {k:'sched_sph_ph',      l:'구면 입력 placeholder'},
+      {k:'sched_cyl_ph',      l:'CYL 입력 placeholder'},
+      {k:'eye_r',             l:'눈 선택 — 우안'},
+      {k:'eye_l',             l:'눈 선택 — 좌안'},
+      {k:'eye_b',             l:'눈 선택 — 양안'},
+      {k:'btn_sched_add',     l:'추가 버튼'},
+      {k:'sched_empty',       l:'일정 없을 때 문구'},
+    ]
+  },
+  { id:'order', icon:'🚨', title:'주문 필요 패널',
+    keys:[
+      {k:'panel_order_title', l:'패널 제목'},
+      {k:'btn_order_print',   l:'출력 버튼'},
+      {k:'order_empty',       l:'주문 없을 때 문구'},
+      {k:'badge_urgent',      l:'긴급 뱃지 텍스트'},
+      {k:'badge_order',       l:'주문 뱃지 텍스트'},
+    ]
+  },
+  { id:'modals', icon:'💬', title:'모달 팝업',
+    keys:[
+      {k:'btn_modal_cancel', l:'재고수정 취소 버튼'},
+      {k:'btn_modal_save',   l:'재고수정 저장 버튼'},
+      {k:'scan_title',       l:'스캔 모달 제목'},
+      {k:'scan_sub',         l:'스캔 모달 설명'},
+      {k:'scan_hint',        l:'스캔 입력 힌트'},
+      {k:'btn_scan_cancel',  l:'스캔 취소 버튼'},
+      {k:'btn_scan_apply',   l:'스캔 적용 버튼'},
+    ]
+  },
+  { id:'doc', icon:'📄', title:'주문서 문서 양식',
+    keys:[
+      {k:'doc_title',    l:'주문서 제목'},
+      {k:'doc_writer',   l:'서명란 — 작성자'},
+      {k:'doc_checker',  l:'서명란 — 확인자'},
+      {k:'doc_approver', l:'서명란 — 승인자'},
+    ]
+  },
+  { id:'stabs', icon:'⚙', title:'설정 탭 이름',
+    keys:[
+      {k:'stab_models', l:'탭 1'},
+      {k:'stab_labels', l:'탭 2'},
+      {k:'stab_global', l:'탭 3'},
+      {k:'stab_data',   l:'탭 4'},
+    ]
+  },
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let LABELS = {...DL};
+let STATE = { models:[], schedule:[], activeId:null };
+let GOPTS = { greenMin:2, cellSize:'md' };
+let CHARTS = {};
+let pendingEdit = null;
+let mmEditId = null;
+let mmType = 'sphere';
+let mmStep = 0.5;
+let expandedId = null;
+let dragSrcId = null;
+
+// ── 셀 크기 자동 최적화 — 상단에 선언해야 selectModel에서 참조 가능
+const CELL_MIN = 48;
+const CELL_MAX = 104;
+const CELL_TARGET_PER_ROW = 10;
+const ZOOM_STEPS = [0.65, 0.75, 0.85, 1.0, 1.15, 1.3, 1.5];
+let zoomIdx = 3;
+
+// ── 그룹 접기/펼치기 상태 — { [modelId]: { [groupKey]: true(접힘)/false(펼침) } }
+let COLLAPSE = {};
+
+const DEFAULT_MODELS = [
+  {id:'eyhance',name:'아이핸스',abbr:'ICB00',brand:'J&J',type:'sphere',color:'#388bfd',sphMin:9,sphMax:28,sphStep:.5,cylVals:[],minStock:1,stock:{}},
+  {id:'eyhance-t',name:'아이핸스 토릭',abbr:'ICBT00',brand:'J&J',type:'toric',color:'#8b5cf6',sphMin:9,sphMax:28,sphStep:.5,cylVals:[1.0,1.5,2.25],minStock:1,stock:{}},
+  {id:'panoptix',name:'판옵틱스',abbr:'TFNT00',brand:'Alcon',type:'sphere',color:'#2ea043',sphMin:6,sphMax:34,sphStep:.5,cylVals:[],minStock:1,stock:{}},
+  {id:'panoptix-t',name:'판옵틱스 토릭',abbr:'TFNT00T',brand:'Alcon',type:'toric',color:'#06b6d4',sphMin:6,sphMax:34,sphStep:.5,cylVals:[1.0,1.5,2.0,2.5],minStock:1,stock:{}},
+];
+
+// ═══════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════
+function save(){localStorage.setItem('iol3_state',JSON.stringify(STATE))}
+function saveL(){localStorage.setItem('iol3_labels',JSON.stringify(LABELS))}
+function saveG(){localStorage.setItem('iol3_gopts',JSON.stringify(GOPTS))}
+function saveC(){localStorage.setItem('iol3_collapse',JSON.stringify(COLLAPSE))}
+function load(){
+  try{const s=localStorage.getItem('iol3_state');if(s)STATE=JSON.parse(s);}catch{}
+  try{const s=localStorage.getItem('iol3_labels');if(s)LABELS={...DL,...JSON.parse(s)};}catch{}
+  try{const s=localStorage.getItem('iol3_gopts');if(s)GOPTS={...GOPTS,...JSON.parse(s)};}catch{}
+  try{const s=localStorage.getItem('iol3_collapse');if(s)COLLAPSE=JSON.parse(s);}catch{}
+  if(!STATE.models||!STATE.models.length)STATE.models=[...DEFAULT_MODELS.map(m=>({...m,stock:{...m.stock}}))]
+  if(!STATE.schedule)STATE.schedule=[];
+}
+
+// ═══════════════════════════════════════
+// ★ LABEL ENGINE — 핵심
+// ═══════════════════════════════════════
+function applyLabels(){
+  const L = LABELS;
+
+  // 1. data-label="key" → textContent 업데이트
+  document.querySelectorAll('[data-label]').forEach(el=>{
+    const k = el.getAttribute('data-label');
+    if(k in L) el.textContent = L[k];
+  });
+
+  // 2. data-label-ph="key" → placeholder 업데이트
+  document.querySelectorAll('[data-label-ph]').forEach(el=>{
+    const k = el.getAttribute('data-label-ph');
+    if(k in L) el.placeholder = L[k];
+  });
+
+  // 3. 특수 처리
+  // 병원명 뱃지
+  const cn = document.getElementById('clinic-name');
+  if(cn){
+    cn.textContent = L.sys_clinic;
+    cn.style.display = L.sys_clinic ? 'block' : 'none';
+  }
+  // 브라우저 탭
+  document.title = L.sys_title || 'IOL 재고관리';
+
+  // 눈 선택 옵션 값도 동기화 (예약 기능에서 value 사용)
+  const eyeSel = document.getElementById('sched-eye');
+  if(eyeSel && eyeSel.options.length >= 3){
+    eyeSel.options[0].text = L.eye_r; eyeSel.options[0].value = L.eye_r;
+    eyeSel.options[1].text = L.eye_l; eyeSel.options[1].value = L.eye_l;
+    eyeSel.options[2].text = L.eye_b; eyeSel.options[2].value = L.eye_b;
+  }
+
+  // 설정 탭 이름 (stab-* ID 요소)
+  ['models','labels','global','data'].forEach(t=>{
+    const el=document.getElementById('stab-'+t);
+    if(el) el.textContent = L['stab_'+t] ?? el.textContent;
+  });
+}
+
+// ═══════════════════════════════════════
+// LABEL EDITOR UI
+// ═══════════════════════════════════════
+function renderLabelEditor(){
+  const el = document.getElementById('sp-labels');
+  let html = `
+  <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div style="font-size:.76rem;color:var(--dim)">입력 즉시 화면에 실시간 반영됩니다. 변경된 항목은 <span style="color:#34d399">초록 테두리</span>로 표시됩니다.</div>
+    <div style="display:flex;gap:6px">
+      <button class="sa" onclick="resetAllLabels()">↩ 전체 기본값</button>
+      <button class="sa prim" onclick="exportLabels()">⬇ 내보내기</button>
+      <label class="sa" style="cursor:pointer">⬆ 불러오기<input type="file" accept=".json" style="display:none" onchange="importLabels(event)"></label>
+    </div>
+  </div>`;
+
+  LABEL_SECS.forEach(sec=>{
+    html += `<div class="le-sec">
+      <div class="le-sec-head"><span>${sec.icon}</span>${sec.title}</div>
+      <table class="le-table">`;
+    sec.keys.forEach(({k,l,h})=>{
+      const cur = LABELS[k] ?? '';
+      const isDef = cur === (DL[k] ?? '');
+      html += `<tr>
+        <td class="le-lbl-cell">${l}${h?`<div class="le-lbl-hint">${h}</div>`:''}
+        </td>
+        <td style="position:relative">
+          <div style="display:flex;align-items:center;gap:4px">
+            <input class="le-inp ${isDef?'':'chg'}" id="li-${k}"
+              value="${esc(cur)}"
+              placeholder="${esc(DL[k]??'')}"
+              oninput="onLI('${k}',this)">
+            ${!isDef?`<button class="le-rst" onclick="rstLabel('${k}')" title="기본값 복원">↩</button>`:''}
+          </div>
+        </td>
+      </tr>`;
+    });
+    html += `</table></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function onLI(k, inp){
+  LABELS[k] = inp.value;
+  saveL();
+  applyLabels();
+  const isDef = inp.value === (DL[k] ?? '');
+  inp.classList.toggle('chg', !isDef);
+  // 복원 버튼 동적 토글
+  let btn = inp.parentElement.querySelector('.le-rst');
+  if(!isDef && !btn){
+    btn = document.createElement('button');
+    btn.className = 'le-rst'; btn.title = '기본값 복원'; btn.textContent = '↩';
+    btn.onclick = ()=>rstLabel(k);
+    inp.after(btn);
+  } else if(isDef && btn){ btn.remove(); }
+}
+
+function rstLabel(k){
+  LABELS[k] = DL[k] ?? '';
+  saveL(); applyLabels();
+  const inp = document.getElementById(`li-${k}`);
+  if(inp){
+    inp.value = LABELS[k]; inp.classList.remove('chg');
+    const btn = inp.parentElement?.querySelector('.le-rst');
+    if(btn) btn.remove();
+  }
+}
+
+function resetAllLabels(){
+  if(!confirm('모든 화면 텍스트를 기본값으로 되돌릴까요?')) return;
+  LABELS = {...DL}; saveL(); applyLabels();
+  renderLabelEditor(); toast('기본값으로 초기화','ok');
+}
+
+function exportLabels(){
+  const b = new Blob([JSON.stringify(LABELS,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+  a.download = 'iol_labels.json'; a.click();
+}
+
+function importLabels(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{ LABELS={...DL,...JSON.parse(ev.target.result)}; saveL(); applyLabels(); renderLabelEditor(); toast('텍스트 설정 불러오기 완료','ok'); }
+    catch{ toast('JSON 파일 오류','err'); }
+  };
+  r.readAsText(f); e.target.value='';
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtD(n){return isNaN(n)?'?':((n*100)%100===0?n.toFixed(1):n.toFixed(2))}
+function getSpheres(m){
+  const l=[],step=m.sphStep||.5;
+  for(let d=m.sphMin;d<=m.sphMax+.001;d+=step) l.push(Math.round(d*100)/100);
+  return l;
+}
+function skey(s,c){return c!=null?`${s}_${c}`:`${s}`}
+function getStock(m,s,c){return m.stock[skey(s,c)]||0}
+function setStock(m,s,c,v){m.stock[skey(s,c)]=Math.max(0,Math.round(v))}
+function schedCnt(mid,s,c){
+  return STATE.schedule.filter(x=>x.mid===mid&&Math.abs(+x.sph-s)<.01&&(c==null||Math.abs(+x.cyl-c)<.01)).length;
+}
+function cellCls(stock,sched,minStock){
+  const mn=minStock??1;
+  if(stock===0) return 'r';
+  if(stock<=mn) return sched>0?'r':'y';
+  if(sched>0&&(stock-sched)<=mn) return 'y';
+  return 'g';
+}
+
+let toastTmr;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast show ${type}`;
+  clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function updateDate(){
+  const now=new Date();
+  document.getElementById('date-badge').textContent=
+    `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()} (${['일','월','화','수','목','금','토'][now.getDay()]})`;
+}
+
+// ═══════════════════════════════════════
+// MODEL LIST
+// ═══════════════════════════════════════
+function renderModelList(){
+  const el=document.getElementById('model-list');
+  el.innerHTML=STATE.models.map(m=>{
+    const sph=getSpheres(m);
+    let g=0,y=0,r=0;
+    const iter=(s,c)=>{
+      const st=getStock(m,s,c),sc=schedCnt(m.id,s,c),cls=cellCls(st,sc,m.minStock);
+      if(cls==='g')g++;else if(cls==='y')y++;else r++;
+    };
+    if(m.type==='toric') sph.forEach(s=>(m.cylVals||[]).forEach(c=>iter(s,c)));
+    else sph.forEach(s=>iter(s,null));
+    return `<div class="mcard ${STATE.activeId===m.id?'on':''}" onclick="selectModel('${m.id}')">
+      <div class="mc-name">
+        <div class="mc-dot" style="background:${m.color}"></div>
+        ${esc(m.name)}
+        <span class="mpill ${m.type==='toric'?'mpill-t':'mpill-s'}">${m.type==='toric'?'토릭':'단/다'}</span>
+      </div>
+      <div class="mc-meta">${esc(m.abbr)} · ${esc(m.brand)}</div>
+      <div class="mc-stats">
+        <div class="ms"><div class="ms-dot" style="background:var(--g2)"></div><span style="color:var(--dim)">${g}</span></div>
+        <div class="ms"><div class="ms-dot" style="background:var(--y2)"></div><span style="color:var(--dim)">${y}</span></div>
+        <div class="ms"><div class="ms-dot" style="background:var(--r2)"></div><span style="color:var(--dim)">${r}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// SELECT & RENDER GRID
+// ═══════════════════════════════════════
+function selectModel(id){
+  STATE.activeId=id; save(); renderModelList();
+  const m=STATE.models.find(x=>x.id===id); if(!m) return;
+  document.getElementById('chead-name').textContent=m.name;
+  document.getElementById('chead-sub').textContent=`${m.abbr} · ${m.brand} · ${fmtD(m.sphMin)}D~${fmtD(m.sphMax)}D`;
+  document.getElementById('min-stock-lbl').innerHTML=
+    `<span data-label="leg_min_prefix">${LABELS.leg_min_prefix||'최소재고'}</span>: ${m.minStock||1}개`;
+  renderGridStats(m);
+  // 셀 크기 계산 후 렌더
+  if(m.type==='toric'){
+    const cw = calcToricCellW((m.cylVals||[]).length||1);
+    const ch = calcToricCellH(cw);
+    document.documentElement.style.setProperty('--toric-h', ch+'px');
+    renderToric(m, cw, ch);
+  } else {
+    const sz = calcSphereCell(m);
+    document.documentElement.style.setProperty('--cell-min', sz+'px');
+    document.documentElement.style.setProperty('--cell-h', Math.min(sz*1.2,CELL_MAX)+'px');
+    renderSphere(m, sz);
+  }
+  // 줌 표시 업데이트
+  const pct=Math.round(ZOOM_STEPS[zoomIdx]*100);
+  const valEl=document.getElementById('zoom-val');
+  if(valEl) valEl.textContent = pct===100?'자동':pct+'%';
+  renderOrderList();
+}
+
+function renderGridStats(m){
+  const sph=getSpheres(m);
+  let g=0,y=0,r=0;
+  const it=(s,c)=>{const cls=cellCls(getStock(m,s,c),schedCnt(m.id,s,c),m.minStock);if(cls==='g')g++;else if(cls==='y')y++;else r++;};
+  if(m.type==='toric')sph.forEach(s=>(m.cylVals||[]).forEach(c=>it(s,c)));
+  else sph.forEach(s=>it(s,null));
+  document.getElementById('chead-stats').innerHTML=
+    `<div class="cstat g">${LABELS.grid_stat_green||'충분'} ${g}</div>`+
+    `<div class="cstat y">${LABELS.grid_stat_yellow||'주문필요'} ${y}</div>`+
+    `<div class="cstat r">${LABELS.grid_stat_red||'없음'} ${r}</div>`;
+}
+
+function renderSphere(m, sz){
+  sz = sz || calcSphereCell(m);
+  const tag = sizeTag(sz);
+  const sph = getSpheres(m);
+  const schedItems=STATE.schedule.filter(x=>x.mid===m.id);
+  let schedSummaryHTML='';
+  if(schedItems.length){
+    const items=schedItems.map(sc=>{
+      const lbl=`${fmtD(sc.sph)}D`;
+      const st=getStock(m,sc.sph,null);
+      const after=st-1;
+      return `<div class="ss-item">
+        <div class="ss-dot"></div>
+        ${lbl} <span style="color:var(--dim);margin:0 2px">→</span>
+        <span style="color:${after<=0?'var(--r2)':after<=m.minStock?'var(--y2)':'var(--g2)'}">잔${after}</span>
+        <span style="color:var(--mu);font-size:.6rem">${sc.eye}</span>
+      </div>`;
+    }).join('');
+    schedSummaryHTML=`<div class="sched-summary">
+      <span class="ss-title">🔵 오늘 수술 예정</span>${items}
+    </div>`;
+  }
+
+  // 도수 그룹 — 5D 단위로 묶기
+  const GROUP_SIZE = 5;
+  // sph 배열을 5D 구간별로 그룹핑
+  const groupMap = {};
+  sph.forEach(s => {
+    const key = Math.floor(s / GROUP_SIZE) * GROUP_SIZE;
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(s);
+  });
+  const groups = Object.keys(groupMap)
+    .sort((a,b) => +a - +b)
+    .map(k => ({ items: groupMap[k] }))
+    .filter(g => g.items.length > 0);
+
+  // 그룹별 렌더
+  const groupsHTML=groups.map(grp=>{
+    const gKey = `sph_${grp.items[0]}`;         // 그룹 식별 키
+    const isCollapsed = !!(COLLAPSE[m.id]?.[gKey]);
+
+    let gg=0,gy=0,gr_=0;
+    grp.items.forEach(s=>{
+      const cls=cellCls(getStock(m,s,null),schedCnt(m.id,s,null),m.minStock);
+      if(cls==='g')gg++;else if(cls==='y')gy++;else gr_++;
+    });
+    const statStr=
+      `${gg>0?`<span style="color:var(--g2)">${gg}</span>`:''}` +
+      `${gy>0?`${gg>0?' · ':''}<span style="color:var(--y2)">${gy}</span>`:''}` +
+      `${gr_>0?`${gg+gy>0?' · ':''}<span style="color:var(--r2)">${gr_}</span>`:''}`;
+
+    const cells=grp.items.map(s=>{
+      const st=getStock(m,s,null);
+      const sc=schedCnt(m.id,s,null);
+      const cls=cellCls(st,sc,m.minStock);
+      const isDanger=sc>0&&(st-sc)<=(m.minStock||1);
+      const afterStock=st-sc;
+      return `<div class="dcell ${cls} ${isDanger?'sched-r':''}"
+        onclick="openStockModal('${m.id}','${s}',null)"
+        title="${fmtD(s)}D · 재고 ${st}${sc?` · 오늘 수술 ${sc}건 · 수술 후 ${afterStock}개`:''}">
+        <div class="cell-d">${fmtD(s)}</div>
+        <div class="cell-n">${st}</div>
+        ${sc>0?`<div class="cell-sched-dot"></div>`:''}
+        ${sc>0?`<div class="cell-after">→${afterStock}</div>`:''}
+      </div>`;
+    }).join('');
+
+    return `<div class="sg${isCollapsed?' collapsed':''}" data-mid="${m.id}" data-gkey="${gKey}">
+      <div class="sg-head" onclick="toggleGroup(event,'${m.id}','${gKey}')">
+        <div class="sg-arrow">▾</div>
+        <div class="sg-lbl">${fmtD(grp.items[0])} ~ ${fmtD(grp.items[grp.items.length-1])} D</div>
+        <div class="sg-bar"></div>
+        <div class="sg-cnt">${statStr}${isCollapsed?` <span style="color:var(--mu);font-size:.6rem">(접힘)</span>`:''}</div>
+      </div>
+      <div class="sg-body">
+        <div class="sphere-grid" data-sz="${tag}">${cells}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('gscroll').innerHTML=
+    schedSummaryHTML+
+    `<div class="sphere-wrap">${groupsHTML}</div>`;
+}
+
+function renderToric(m, cw, ch){
+  // cw/ch 파라미터 무시 — sphere와 동일한 auto-fill 방식으로 전환
+  const sph  = getSpheres(m);
+  const cyls = m.cylVals || [];
+
+  if(!cyls.length){
+    document.getElementById('gscroll').innerHTML =
+      '<div style="color:var(--mu);padding:24px 18px">CYL 값이 없습니다. 모델 설정에서 CYL을 선택해주세요.</div>';
+    return;
+  }
+
+  // sphere와 동일한 셀 크기 계산
+  const sz  = calcSphereCell(m);
+  const tag = sizeTag(sz);
+  document.documentElement.style.setProperty('--cell-min', sz + 'px');
+  document.documentElement.style.setProperty('--cell-h', Math.min(sz * 1.2, CELL_MAX) + 'px');
+
+  // 수술 예정 요약
+  const schedItems = STATE.schedule.filter(x => x.mid === m.id);
+  let schedSummaryHTML = '';
+  if(schedItems.length){
+    const items = schedItems.map(sc => {
+      const lbl = sc.cyl != null
+        ? `${fmtD(sc.sph)}D +${fmtD(sc.cyl)}CYL`
+        : `${fmtD(sc.sph)}D`;
+      const st    = getStock(m, sc.sph, sc.cyl);
+      const after = st - 1;
+      return `<div class="ss-item">
+        <div class="ss-dot"></div>
+        ${lbl}
+        <span style="color:var(--dim);margin:0 2px">→</span>
+        <span style="color:${after<=0?'var(--r2)':after<=m.minStock?'var(--y2)':'var(--g2)'}">잔${after}</span>
+        <span style="color:var(--mu);font-size:.6rem">${sc.eye}</span>
+      </div>`;
+    }).join('');
+    schedSummaryHTML = `<div class="sched-summary">
+      <span class="ss-title">🔵 오늘 수술 예정</span>${items}
+    </div>`;
+  }
+
+  // CYL 값별 그룹 — 각 CYL이 하나의 섹션
+  const cylGroupsHTML = cyls.map(cyl => {
+    const gKey = `cyl_${cyl}`;
+    const isCollapsed = !!(COLLAPSE[m.id]?.[gKey]);
+
+    let gg=0, gy=0, gr=0;
+    sph.forEach(s => {
+      const cls = cellCls(getStock(m,s,cyl), schedCnt(m.id,s,cyl), m.minStock);
+      if(cls==='g') gg++; else if(cls==='y') gy++; else gr++;
+    });
+    const statStr =
+      (gg>0 ? `<span style="color:var(--g2)">${gg}</span>` : '') +
+      (gy>0 ? `${gg>0?' · ':''}<span style="color:var(--y2)">${gy}</span>` : '') +
+      (gr>0 ? `${gg+gy>0?' · ':''}<span style="color:var(--r2)">${gr}</span>` : '');
+
+    const cells = sph.map(s => {
+      const st         = getStock(m, s, cyl);
+      const sc         = schedCnt(m.id, s, cyl);
+      const cls        = cellCls(st, sc, m.minStock);
+      const isDanger   = sc > 0 && (st - sc) <= (m.minStock || 1);
+      const afterStock = st - sc;
+      return `<div class="dcell ${cls} ${isDanger?'sched-r':''}"
+        onclick="openStockModal('${m.id}','${s}','${cyl}')"
+        title="${fmtD(s)}D  +${fmtD(cyl)} CYL · 재고 ${st}${sc?` · 수술 ${sc}건 · 수술 후 ${afterStock}개`:''}">
+        <div class="cell-d">${fmtD(s)}</div>
+        <div class="cell-cyl">+${fmtD(cyl)}</div>
+        <div class="cell-n">${st}</div>
+        ${sc>0 ? `<div class="cell-sched-dot"></div>` : ''}
+        ${sc>0 ? `<div class="cell-after">→${afterStock}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `<div class="toric-cyl-group${isCollapsed?' collapsed':''}" data-mid="${m.id}" data-gkey="${gKey}">
+      <div class="toric-cyl-head" onclick="toggleGroup(event,'${m.id}','${gKey}')">
+        <div class="toric-cyl-arrow">▾</div>
+        <div class="toric-cyl-badge">+${fmtD(cyl)} CYL</div>
+        <div class="toric-cyl-bar"></div>
+        <div class="toric-cyl-cnt">${statStr}${isCollapsed?` <span style="color:var(--mu);font-size:.6rem">(접힘)</span>`:''}</div>
+      </div>
+      <div class="toric-cyl-body">
+        <div class="toric-grid sphere-grid" data-sz="${tag}">${cells}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('gscroll').innerHTML =
+    schedSummaryHTML +
+    `<div class="sphere-wrap">${cylGroupsHTML}</div>`;
+}
+// ═══════════════════════════════════════
+// 그룹 접기 / 펼치기
+// ═══════════════════════════════════════
+
+// 헤더 클릭 → 해당 그룹 토글 + 저장
+function toggleGroup(event, mid, gKey){
+  event.stopPropagation();
+  if(!COLLAPSE[mid]) COLLAPSE[mid] = {};
+  COLLAPSE[mid][gKey] = !COLLAPSE[mid][gKey];
+  saveC();
+
+  // DOM 직접 조작 (재렌더 없이 즉시 반영)
+  const groupEl = document.querySelector(
+    `[data-mid="${mid}"][data-gkey="${gKey}"]`
+  );
+  if(!groupEl) return;
+  const isNowCollapsed = COLLAPSE[mid][gKey];
+  groupEl.classList.toggle('collapsed', isNowCollapsed);
+
+  // (접힘) 텍스트도 즉시 업데이트
+  const cntEl = groupEl.querySelector('.sg-cnt, .toric-cyl-cnt');
+  if(cntEl){
+    // 기존 (접힘) span 제거 후 재삽입
+    const existing = cntEl.querySelector('span[data-collapse-hint]');
+    if(existing) existing.remove();
+    if(isNowCollapsed){
+      const hint = document.createElement('span');
+      hint.setAttribute('data-collapse-hint','1');
+      hint.style.cssText = 'color:var(--mu);font-size:.6rem';
+      hint.textContent = ' (접힘)';
+      cntEl.appendChild(hint);
+    }
+  }
+}
+
+// 현재 모델 — 전체 접기
+function collapseAll(){
+  const m = STATE.models.find(x=>x.id===STATE.activeId); if(!m) return;
+  if(!COLLAPSE[m.id]) COLLAPSE[m.id] = {};
+  const sph = getSpheres(m);
+  if(m.type !== 'toric'){
+    // renderSphere와 동일한 그룹 키: sph_${grp.items[0]}
+    const GROUP_SIZE = 5;
+    const groupMap = {};
+    sph.forEach(s => {
+      const key = Math.floor(s/GROUP_SIZE)*GROUP_SIZE;
+      if(!groupMap[key]) groupMap[key] = s; // 그룹의 첫 번째 도수
+    });
+    COLLAPSE[m.id] = {};
+    Object.values(groupMap).forEach(firstS => {
+      COLLAPSE[m.id][`sph_${firstS}`] = true;
+    });
+  } else {
+    COLLAPSE[m.id] = {};
+    (m.cylVals||[]).forEach(c => {
+      COLLAPSE[m.id][`cyl_${c}`] = true;
+    });
+  }
+  saveC();
+  selectModel(m.id);
+}
+
+// 현재 모델 — 전체 펼치기
+function expandAll(){
+  const m = STATE.models.find(x=>x.id===STATE.activeId); if(!m) return;
+  COLLAPSE[m.id] = {};
+  saveC();
+  selectModel(m.id);
+}
+
+// ═══════════════════════════════════════
+// STOCK MODAL
+// ═══════════════════════════════════════
+function openStockModal(mid,s,c){
+  const m=STATE.models.find(x=>x.id===mid); if(!m) return;
+  pendingEdit={mid,s:+s,c:c!=null&&c!=='null'?+c:null};
+  const st=getStock(m,+s,pendingEdit.c),sc=schedCnt(mid,+s,pendingEdit.c);
+  document.getElementById('sm-title').textContent=m.name;
+  document.getElementById('sm-sub').textContent=sc?`⚠ 오늘 수술 예정 ${sc}건`:'재고 수정';
+  document.getElementById('sm-diopter').textContent=pendingEdit.c!=null
+    ?`${fmtD(+s)}D  +${fmtD(pendingEdit.c)} CYL`:`${fmtD(+s)}D`;
+  document.getElementById('sc-val').value=st;
+  document.getElementById('stock-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('sc-val').focus(),80);
+}
+function closeStockModal(){document.getElementById('stock-modal').style.display='none';pendingEdit=null;}
+function adjStock(d){const e=document.getElementById('sc-val');e.value=Math.max(0,Math.min(99,+e.value+d));}
+function clampVal(){const e=document.getElementById('sc-val');if(+e.value<0)e.value=0;if(+e.value>99)e.value=99;}
+function confirmStock(){
+  if(!pendingEdit) return;
+  const{mid,s,c}=pendingEdit;
+  const m=STATE.models.find(x=>x.id===mid); if(!m) return;
+  const v=+document.getElementById('sc-val').value;
+  setStock(m,s,c,v); save(); closeStockModal();
+  selectModel(mid);
+  toast(`${fmtD(s)}D → ${v}개`,'ok');
+}
+
+// ═══════════════════════════════════════
+// QUICK INPUT
+// ═══════════════════════════════════════
+function applyQuick(){
+  const raw=document.getElementById('qinp').value.trim(); if(!raw) return;
+  const m=STATE.models.find(x=>x.id===STATE.activeId);
+  if(!m){toast('모델을 먼저 선택하세요','err');return;}
+  const r=parseQuick(raw,m);
+  if(r.err){toast(r.err,'err');return;}
+  setStock(m,r.s,r.c,r.v); save(); selectModel(m.id);
+  document.getElementById('qinp').value='';
+  toast(`${fmtD(r.s)}D${r.c!=null?` +${fmtD(r.c)}CYL`:''} → ${r.v}개`,'ok');
+}
+
+function parseQuick(raw,m){
+  raw=raw.replace(/[Dd]/g,'').trim();
+  let cyl=null;
+  const cm=raw.match(/[+]?(\d+\.?\d*)\s*cyl/i)||raw.match(/\+(\d+\.?\d+)/i);
+  if(cm){cyl=+cm[1];raw=raw.replace(cm[0],'').trim();}
+  const pts=raw.trim().split(/\s+/);
+  const sph=parseFloat(pts[0]);
+  if(isNaN(sph)) return{err:'도수를 인식하지 못했습니다'};
+  const sphList=getSpheres(m);
+  const ns=sphList.find(x=>Math.abs(x-sph)<.01);
+  if(!ns) return{err:`${sph}D는 범위 밖입니다 (${fmtD(m.sphMin)}~${fmtD(m.sphMax)}D)`};
+  const cur=getStock(m,ns,cyl);
+  let nv=cur;
+  if(pts.length>=2){
+    const q=pts[1];
+    if(q.startsWith('-')) nv=Math.max(0,cur+parseInt(q));
+    else if(q.toLowerCase().startsWith('x')) nv=cur+parseInt(q.slice(1));
+    else nv=parseInt(q);
+  } else nv=cur+1;
+  return{s:ns,c:cyl,v:Math.max(0,nv)};
+}
+
+// ═══════════════════════════════════════
+// SCAN
+// ═══════════════════════════════════════
+function openScan(){document.getElementById('scan-text').value='';document.getElementById('scan-modal').style.display='flex';setTimeout(()=>document.getElementById('scan-text').focus(),80);}
+function closeScan(){document.getElementById('scan-modal').style.display='none';}
+function applyScan(){
+  const m=STATE.models.find(x=>x.id===STATE.activeId);
+  if(!m){toast('모델을 선택해주세요','err');return;}
+  const lines=document.getElementById('scan-text').value.trim().split('\n');
+  let ok=0,fail=0;
+  lines.forEach(line=>{line=line.trim();if(!line)return;const r=parseQuick(line,m);if(r.err){fail++;return;}setStock(m,r.s,r.c,r.v);ok++;});
+  save(); selectModel(m.id); closeScan();
+  toast(`${ok}개 적용${fail?` (${fail}개 실패)`:''}`,ok?'ok':'err');
+}
+
+// ═══════════════════════════════════════
+// SCHEDULE
+// ═══════════════════════════════════════
+function renderSchedSelect(){
+  document.getElementById('sched-model').innerHTML=
+    STATE.models.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+}
+function addSched(){
+  const mid=document.getElementById('sched-model').value;
+  const s=parseFloat(document.getElementById('sched-sph').value);
+  const cylRaw=document.getElementById('sched-cyl').value.trim();
+  const eye=document.getElementById('sched-eye').value;
+  if(isNaN(s)){toast('구면 도수를 입력하세요','err');return;}
+  const m=STATE.models.find(x=>x.id===mid); if(!m) return;
+  const ns=getSpheres(m).find(x=>Math.abs(x-s)<.01);
+  if(!ns){toast(`${s}D는 범위 밖입니다`,'err');return;}
+  let cyl=null;
+  if(cylRaw){cyl=parseFloat(cylRaw);if(isNaN(cyl)){toast('CYL 값 오류','err');return;}}
+  const eyeB=LABELS.eye_b||'양안';
+  const eyeR=LABELS.eye_r||'우안';
+  const eyeL=LABELS.eye_l||'좌안';
+  if(eye===eyeB){
+    STATE.schedule.push({mid,sph:ns,cyl,eye:eyeR});
+    STATE.schedule.push({mid,sph:ns,cyl,eye:eyeL});
+  } else {
+    STATE.schedule.push({mid,sph:ns,cyl,eye});
+  }
+  save(); document.getElementById('sched-sph').value=''; document.getElementById('sched-cyl').value='';
+  renderSchedule(); selectModel(STATE.activeId);
+  const m2=STATE.models.find(x=>x.id===mid);
+  toast(`${m2?.name} ${fmtD(ns)}D 추가`,'ok');
+}
+function removeSchedItem(i){STATE.schedule.splice(i,1);save();renderSchedule();if(STATE.activeId)selectModel(STATE.activeId);}
+function clearSched(){if(!confirm('오늘 일정을 모두 삭제할까요?'))return;STATE.schedule=[];save();renderSchedule();if(STATE.activeId)selectModel(STATE.activeId);}
+function renderSchedule(){
+  const el=document.getElementById('sched-list');
+  if(!STATE.schedule.length){el.innerHTML=`<div class="empty-msg">${esc(LABELS.sched_empty||'수술 일정 없음')}</div>`;return;}
+  el.innerHTML=STATE.schedule.map((s,i)=>{
+    const m=STATE.models.find(x=>x.id===s.mid); if(!m) return '';
+    const st=getStock(m,s.sph,s.cyl),warn=st<=(m.minStock||1);
+    const lbl=s.cyl!=null?`${fmtD(s.sph)}D +${fmtD(s.cyl)}CYL`:`${fmtD(s.sph)}D`;
+    return `<div class="sitem">
+      <div class="sit-lens">${esc(m.abbr)}</div>
+      <div class="sit-d">${lbl}</div>
+      <div class="sit-eye">${esc(s.eye)}</div>
+      ${warn?`<div class="sit-warn">⚠재고${st}</div>`:`<div style="margin-left:auto;font-size:.63rem;color:var(--mu)">재고${st}</div>`}
+      <div class="sit-del" onclick="removeSchedItem(${i})">✕</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// ORDER LIST
+// ═══════════════════════════════════════
+function renderOrderList(){
+  const items=[];
+  STATE.models.forEach(m=>{
+    const sph=getSpheres(m);
+    const add=(s,c)=>{
+      const st=getStock(m,s,c),sc=schedCnt(m.id,s,c),cls=cellCls(st,sc,m.minStock);
+      if(cls!=='g'){
+        const lbl=c!=null?`${fmtD(s)}D +${fmtD(c)}CYL`:`${fmtD(s)}D`;
+        items.push({m,lbl,st,sc,urg:cls==='r'});
+      }
+    };
+    if(m.type==='toric')sph.forEach(s=>(m.cylVals||[]).forEach(c=>add(s,c)));
+    else sph.forEach(s=>add(s,null));
+  });
+  const el=document.getElementById('order-list');
+  if(!items.length){el.innerHTML=`<div class="empty-msg">${esc(LABELS.order_empty||'✅ 주문 필요 품목 없음')}</div>`;return;}
+  items.sort((a,b)=>(b.urg?1:0)-(a.urg?1:0));
+  el.innerHTML=items.map(it=>`
+    <div class="oitem ${it.urg?'urg':'warn'}">
+      <div style="width:7px;height:7px;border-radius:50%;background:${it.m.color};flex-shrink:0"></div>
+      <div class="oi-info">
+        <div class="oi-model">${esc(it.m.name)}</div>
+        <div class="oi-d">${esc(it.lbl)}</div>
+      </div>
+      <div class="oi-stock">재고${it.st}${it.sc?` (수술${it.sc})`:''}</div>
+      <span class="badge ${it.urg?'badge-r':'badge-y'}">${it.urg?(LABELS.badge_urgent||'긴급'):(LABELS.badge_order||'주문')}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// ORDER EXPORT
+// ═══════════════════════════════════════
+function doExportOrder(){
+  const items=[];
+  STATE.models.forEach(m=>{
+    const sph=getSpheres(m);
+    const add=(s,c)=>{
+      const st=getStock(m,s,c),sc=schedCnt(m.id,s,c),cls=cellCls(st,sc,m.minStock);
+      if(cls!=='g') items.push({mn:m.name,abbr:m.abbr,lbl:c!=null?`${fmtD(s)}D +${fmtD(c)}CYL`:`${fmtD(s)}D`,st,sc,urg:cls==='r'});
+    };
+    if(m.type==='toric')sph.forEach(s=>(m.cylVals||[]).forEach(c=>add(s,c)));
+    else sph.forEach(s=>add(s,null));
+  });
+  const today=new Date().toLocaleDateString('ko-KR');
+  const rows=items.sort((a,b)=>(b.urg?1:0)-(a.urg?1:0)).map(it=>
+    `<tr style="${it.urg?'background:#fef2f2':''}">
+      <td style="padding:7px 10px">${it.mn} (${it.abbr})</td>
+      <td style="padding:7px 10px;font-family:monospace;font-weight:700">${it.lbl}</td>
+      <td style="padding:7px 10px;text-align:center">${it.st}</td>
+      <td style="padding:7px 10px;text-align:center">${it.sc||'-'}</td>
+      <td style="padding:7px 10px;text-align:center;font-weight:700;color:${it.urg?'#dc2626':'#d29922'}">${it.urg?(LABELS.badge_urgent||'긴급'):(LABELS.badge_order||'주문')}</td>
+      <td style="padding:7px 10px;width:80px"></td>
+    </tr>`).join('');
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${LABELS.doc_title||'주문서'} - ${today}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>body{font-family:'Noto Sans KR',sans-serif;padding:32px;color:#1f2937}
+    table{width:100%;border-collapse:collapse}th{background:#1e40af;color:#fff;padding:8px 10px;text-align:left}
+    td{border-bottom:1px solid #e5e7eb}</style></head><body>
+    <h2 style="margin-bottom:4px">${LABELS.doc_title||'🏥 IOL 렌즈 주문 요청서'}</h2>
+    ${LABELS.sys_clinic?`<div style="font-size:13px;color:#6b7280;margin-bottom:2px">${LABELS.sys_clinic}</div>`:''}
+    <p style="color:#6b7280;font-size:13px;margin-bottom:20px">발행일: ${today}</p>
+    <table><thead><tr><th>모델명</th><th>도수</th><th>현재재고</th><th>오늘수술</th><th>상태</th><th>비고</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;font-size:13px">
+      ${[LABELS.doc_writer||'작성자',LABELS.doc_checker||'확인자',LABELS.doc_approver||'승인자'].map(t=>`<div style="border-top:2px solid #000;padding-top:8px;text-align:center">${t}</div>`).join('')}
+    </div>
+    <script>window.print();<\/script></body></html>`);
+}
+
+// ═══════════════════════════════════════
+// SETTINGS PANEL
+// ═══════════════════════════════════════
+function openSettings(){
+  document.getElementById('sov').classList.add('open');
+  switchSTab('models');
+}
+function closeSettings(){document.getElementById('sov').classList.remove('open');}
+
+function switchSTab(id){
+  ['models','labels','global','data'].forEach(t=>{
+    document.getElementById('sp-'+t).style.display=t===id?'block':'none';
+    document.getElementById('stab-'+t).classList.toggle('on',t===id);
+  });
+  if(id==='models')renderSpModels();
+  if(id==='labels')renderLabelEditor();
+  if(id==='global')renderGlobal();
+  if(id==='data')  renderDataTab();
+}
+
+// ── MODELS TAB
+function renderSpModels(){
+  const el=document.getElementById('sp-models');
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:.76rem;color:var(--dim)">카드를 클릭해 펼치면 모든 항목을 직접 수정할 수 있습니다.</div>
+    <button class="sa prim" onclick="openModelModal(null)">＋ 새 모델 추가</button>
+  </div>
+  <div id="smc-list">${STATE.models.map(m=>renderSmcCard(m)).join('')}</div>`;
+}
+
+function renderSmcCard(m){
+  const sph=getSpheres(m);
+  const total=m.type==='toric'?sph.length*(m.cylVals||[]).length:sph.length;
+  const isOpen=expandedId===m.id;
+  const prev=sph.slice(0,8).map(s=>`<div class="dc">${fmtD(s)}</div>`).join('')+
+    (sph.length>8?`<div class="dc-more">+${sph.length-8}</div>`:'');
+  const cylPrev=(m.cylVals||[]).map(c=>`+${fmtD(c)}`).join('  ');
+  return `
+  <div class="smc ${isOpen?'exp':''}" id="smc-${m.id}"
+    draggable="true" ondragstart="dsStart(event,'${m.id}')"
+    ondragover="dsOver(event,'${m.id}')" ondrop="dsDrop(event,'${m.id}')"
+    ondragleave="dsLeave(event,'${m.id}')">
+    <div class="smc-h" onclick="toggleSmc('${m.id}')">
+      <span class="smc-drag" title="드래그 순서변경">⠿</span>
+      <div class="smc-dot" style="background:${m.color}"></div>
+      <div class="smc-info">
+        <div class="smc-name">${esc(m.name)}</div>
+        <div class="smc-meta">${esc(m.abbr)} · ${esc(m.brand)} · ${fmtD(m.sphMin)}~${fmtD(m.sphMax)}D · ${total}종</div>
+      </div>
+      <span class="mpill ${m.type==='toric'?'mpill-t':'mpill-s'}">${m.type==='toric'?'토릭':'단/다'}</span>
+      <span class="smc-arr ${isOpen?'open':''}">▶</span>
+    </div>
+    <div class="smc-body ${isOpen?'open':''}">
+      <div class="eg3">
+        <div class="ef"><div class="efl">모델 이름</div>
+          <input class="efi" id="sm-name-${m.id}" value="${esc(m.name)}" oninput="smLive('${m.id}','name',this.value)"></div>
+        <div class="ef"><div class="efl">약칭</div>
+          <input class="efi" id="sm-abbr-${m.id}" value="${esc(m.abbr)}"></div>
+        <div class="ef"><div class="efl">제조사</div>
+          <input class="efi" id="sm-brand-${m.id}" value="${esc(m.brand)}"></div>
+      </div>
+      <div class="eg2">
+        <div class="ef"><div class="efl">렌즈 유형</div>
+          <div class="tt-row">
+            <div class="tt ${m.type==='sphere'?'on':''}" id="smt-s-${m.id}" onclick="smType('${m.id}','sphere',this)">단초점/다초점</div>
+            <div class="tt ${m.type==='toric'?'on':''}" id="smt-t-${m.id}" onclick="smType('${m.id}','toric',this)">토릭(난시)</div>
+          </div>
+        </div>
+        <div class="ef"><div class="efl">최소 재고 기준</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:5px">
+            <input class="efi" type="number" id="sm-min-${m.id}" value="${m.minStock||1}" min="0" style="width:60px">
+            <span style="font-size:.68rem;color:var(--mu)">개 이상 = 충분</span>
+          </div>
+        </div>
+      </div>
+      <div class="ef" style="margin-top:9px"><div class="efl">컬러</div>
+        <div class="cpicker" id="sm-cp-${m.id}">
+          ${COLORS.map(c=>`<div class="cp ${c===m.color?'on':''}" style="background:${c}" onclick="smColor('${m.id}','${c}',this)"></div>`).join('')}
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--bd);margin:12px 0">
+      <div style="font-size:.63rem;font-weight:700;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px">도수 범위</div>
+      <div class="eg3">
+        <div class="ef"><div class="efl">최소 (D)</div>
+          <input class="efi" type="number" id="sm-smin-${m.id}" value="${m.sphMin}" step="0.5" oninput="smPrev('${m.id}')"></div>
+        <div class="ef"><div class="efl">최대 (D)</div>
+          <input class="efi" type="number" id="sm-smax-${m.id}" value="${m.sphMax}" step="0.5" oninput="smPrev('${m.id}')"></div>
+        <div class="ef"><div class="efl">간격 (D)</div>
+          <div class="step-row" id="sm-step-${m.id}">
+            ${[0.5,0.25,1.0].map(s=>`<div class="stp ${m.sphStep===s?'on':''}" onclick="smStep('${m.id}',${s},this)">${s}D</div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div id="sm-prev-${m.id}" style="margin-top:7px">
+        <div style="font-size:.63rem;color:var(--mu);margin-bottom:3px">도수 미리보기</div>
+        <div class="diop-prev">${prev}</div>
+      </div>
+      <div id="sm-cyl-${m.id}" style="display:${m.type==='toric'?'block':'none'};margin-top:9px">
+        <div class="ef"><div class="efl">CYL 조합</div>
+          <div class="cyl-tags" id="sm-cyls-${m.id}">
+            ${CYL_OPTS.map(c=>`<div class="cyl-t ${(m.cylVals||[]).includes(c)?'on':''}" onclick="this.classList.toggle('on')">${fmtD(c)}</div>`).join('')}
+          </div>
+        </div>
+        ${cylPrev?`<div style="font-size:.66rem;color:var(--dim);font-family:var(--mo);margin-top:4px">선택됨: ${cylPrev}</div>`:''}
+      </div>
+      <div class="smc-acts">
+        <button class="sa ok" onclick="saveSmCard('${m.id}')">💾 저장</button>
+        <button class="sa" onclick="selectModel('${m.id}');closeSettings()">📊 재고 보기</button>
+        <button class="sa" onclick="rstModelStock('${m.id}')">📦 재고 초기화</button>
+        <button class="sa danger" onclick="delModelSmc('${m.id}')">🗑 삭제</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleSmc(id){expandedId=expandedId===id?null:id;renderSpModels();}
+function smLive(id,field,val){
+  const nm=document.querySelector(`#smc-${id} .smc-name`);
+  if(field==='name'&&nm)nm.textContent=val;
+}
+function smType(id,type,el){
+  el.closest('.tt-row').querySelectorAll('.tt').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById(`sm-cyl-${id}`).style.display=type==='toric'?'block':'none';
+}
+function smColor(id,c,el){
+  document.getElementById(`sm-cp-${id}`).querySelectorAll('.cp').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelector(`#smc-${id} .smc-dot`).style.background=c;
+}
+function smStep(id,s,el){
+  el.closest('.step-row').querySelectorAll('.stp').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on'); smPrev(id);
+}
+function smPrev(id){
+  const smin=+document.getElementById(`sm-smin-${id}`).value;
+  const smax=+document.getElementById(`sm-smax-${id}`).value;
+  const stepEl=document.querySelector(`#sm-step-${id} .stp.on`);
+  const step=stepEl?+stepEl.textContent:0.5;
+  const l=[]; for(let d=smin;d<=smax+.001;d+=step) l.push(Math.round(d*100)/100);
+  const prev=l.slice(0,10).map(s=>`<div class="dc">${fmtD(s)}</div>`).join('')+(l.length>10?`<div class="dc-more">+${l.length-10}</div>`:'');
+  const el=document.getElementById(`sm-prev-${id}`);
+  if(el)el.innerHTML=`<div style="font-size:.63rem;color:var(--mu);margin-bottom:3px">도수 미리보기 (${l.length}종)</div><div class="diop-prev">${prev}</div>`;
+}
+function saveSmCard(id){
+  const m=STATE.models.find(x=>x.id===id); if(!m) return;
+  m.name=document.getElementById(`sm-name-${id}`).value.trim()||m.name;
+  m.abbr=document.getElementById(`sm-abbr-${id}`).value.trim();
+  m.brand=document.getElementById(`sm-brand-${id}`).value.trim();
+  m.sphMin=+document.getElementById(`sm-smin-${id}`).value;
+  m.sphMax=+document.getElementById(`sm-smax-${id}`).value;
+  m.minStock=+document.getElementById(`sm-min-${id}`).value||1;
+  const te=document.querySelector(`#smc-${id} .tt.on`);
+  m.type=te?.textContent.includes('토릭')?'toric':'sphere';
+  const se=document.querySelector(`#sm-step-${id} .stp.on`);
+  m.sphStep=se?parseFloat(se.textContent):0.5;
+  const ce=document.querySelector(`#sm-cp-${id} .cp.on`);
+  if(ce)m.color=ce.style.background;
+  if(m.type==='toric'){
+    m.cylVals=Array.from(document.querySelectorAll(`#sm-cyls-${id} .cyl-t.on`))
+      .map(e=>parseFloat(e.textContent)).sort((a,b)=>a-b);
+  } else m.cylVals=[];
+  save(); renderModelList(); renderSchedSelect();
+  if(STATE.activeId===id)selectModel(id);
+  renderSpModels(); toast(`${m.name} 저장 완료`,'ok');
+}
+function delModelSmc(id){
+  const m=STATE.models.find(x=>x.id===id);
+  if(!confirm(`'${m?.name}' 모델을 삭제할까요?`))return;
+  STATE.models=STATE.models.filter(x=>x.id!==id);
+  STATE.schedule=STATE.schedule.filter(x=>x.mid!==id);
+  if(STATE.activeId===id)STATE.activeId=STATE.models[0]?.id||null;
+  save(); renderModelList(); renderSchedSelect();
+  if(STATE.activeId)selectModel(STATE.activeId);
+  renderSpModels(); toast('모델 삭제 완료');
+}
+function rstModelStock(id){
+  const m=STATE.models.find(x=>x.id===id);
+  if(!confirm(`'${m?.name}' 재고를 0으로 초기화할까요?`))return;
+  m.stock={}; save(); if(STATE.activeId===id)selectModel(id); toast('재고 초기화');
+}
+
+// drag
+function dsStart(ev,id){dragSrcId=id;ev.dataTransfer.effectAllowed='move';}
+function dsOver(ev,id){ev.preventDefault();document.querySelectorAll('.smc').forEach(e=>e.classList.remove('smc-dov'));document.getElementById(`smc-${id}`)?.classList.add('smc-dov');}
+function dsLeave(ev,id){document.getElementById(`smc-${id}`)?.classList.remove('smc-dov');}
+function dsDrop(ev,id){
+  ev.preventDefault();document.querySelectorAll('.smc').forEach(e=>e.classList.remove('smc-dov'));
+  if(!dragSrcId||dragSrcId===id)return;
+  const si=STATE.models.findIndex(m=>m.id===dragSrcId),ti=STATE.models.findIndex(m=>m.id===id);
+  if(si<0||ti<0)return;
+  const[mv]=STATE.models.splice(si,1);STATE.models.splice(ti,0,mv);
+  save();renderModelList();renderSpModels();dragSrcId=null;
+}
+
+// ── MODEL ADD/EDIT MODAL
+function openModelModal(id){
+  mmEditId=id; mmType='sphere'; mmStep=0.5;
+  const m=id?STATE.models.find(x=>x.id===id):null;
+  if(m){mmType=m.type;mmStep=m.sphStep;}
+  document.getElementById('mm-title').textContent=m?'렌즈 모델 수정':'렌즈 모델 추가';
+  document.getElementById('mm-sub').textContent=m?`${m.name} 설정 변경`:'새 IOL 렌즈 모델을 등록합니다';
+  document.getElementById('mm-name').value=m?.name||'';
+  document.getElementById('mm-abbr').value=m?.abbr||'';
+  document.getElementById('mm-brand').value=m?.brand||'';
+  document.getElementById('mm-smin').value=m?.sphMin??9.0;
+  document.getElementById('mm-smax').value=m?.sphMax??28.0;
+  document.getElementById('mm-min').value=m?.minStock??1;
+  document.getElementById('mm-del').style.display=m?'block':'none';
+  // type
+  document.getElementById('mm-type-sphere').classList.toggle('on',mmType==='sphere');
+  document.getElementById('mm-type-toric').classList.toggle('on',mmType==='toric');
+  document.getElementById('mm-cyl-area').style.display=mmType==='toric'?'block':'none';
+  // step
+  document.querySelectorAll('#mm-step .stp').forEach(e=>{
+    const v=parseFloat(e.textContent);e.classList.toggle('on',v===mmStep);
+  });
+  // color
+  const selC=m?.color||COLORS[0];
+  document.getElementById('mm-cpicker').innerHTML=COLORS.map(c=>
+    `<div class="cp ${c===selC?'on':''}" style="background:${c}" onclick="this.parentElement.querySelectorAll('.cp').forEach(e=>e.classList.remove('on'));this.classList.add('on')"></div>`).join('');
+  // cyls
+  document.getElementById('mm-cyls').innerHTML=CYL_OPTS.map(c=>
+    `<div class="cyl-t ${(m?.cylVals||[]).includes(c)?'on':''}" onclick="this.classList.toggle('on')">${fmtD(c)}</div>`).join('');
+  document.getElementById('model-modal').style.display='flex';
+}
+function closeModelModal(){document.getElementById('model-modal').style.display='none';mmEditId=null;}
+function mmSetType(t){
+  mmType=t;
+  document.getElementById('mm-type-sphere').classList.toggle('on',t==='sphere');
+  document.getElementById('mm-type-toric').classList.toggle('on',t==='toric');
+  document.getElementById('mm-cyl-area').style.display=t==='toric'?'block':'none';
+}
+function mmSetStep(s,el){
+  mmStep=s;
+  el.closest('.step-row').querySelectorAll('.stp').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+}
+function saveModelMM(){
+  const name=document.getElementById('mm-name').value.trim();
+  if(!name){toast('이름을 입력하세요','err');return;}
+  const smin=+document.getElementById('mm-smin').value;
+  const smax=+document.getElementById('mm-smax').value;
+  if(smin>=smax){toast('도수 범위 오류','err');return;}
+  const color=document.querySelector('#mm-cpicker .cp.on')?.style.background||COLORS[0];
+  const cyls=mmType==='toric'?Array.from(document.querySelectorAll('#mm-cyls .cyl-t.on')).map(e=>parseFloat(e.textContent)).sort((a,b)=>a-b):[];
+  if(mmEditId){
+    const m=STATE.models.find(x=>x.id===mmEditId);
+    if(m){Object.assign(m,{name,abbr:document.getElementById('mm-abbr').value.trim(),brand:document.getElementById('mm-brand').value.trim(),type:mmType,color,sphMin:smin,sphMax:smax,sphStep:mmStep,cylVals:cyls,minStock:+document.getElementById('mm-min').value||1});}
+  } else {
+    STATE.models.push({id:'m_'+Date.now(),name,abbr:document.getElementById('mm-abbr').value.trim(),brand:document.getElementById('mm-brand').value.trim(),type:mmType,color,sphMin:smin,sphMax:smax,sphStep:mmStep,cylVals:cyls,minStock:+document.getElementById('mm-min').value||1,stock:{}});
+  }
+  save();closeModelModal();renderModelList();renderSchedSelect();
+  if(STATE.activeId)selectModel(STATE.activeId);
+  toast(`${name} 저장 완료`,'ok');
+}
+function deleteModelMM(){
+  const m=STATE.models.find(x=>x.id===mmEditId);
+  if(!confirm(`'${m?.name}' 삭제?`))return;
+  STATE.models=STATE.models.filter(x=>x.id!==mmEditId);
+  STATE.schedule=STATE.schedule.filter(x=>x.mid!==mmEditId);
+  if(STATE.activeId===mmEditId)STATE.activeId=STATE.models[0]?.id||null;
+  save();closeModelModal();renderModelList();renderSchedSelect();
+  if(STATE.activeId)selectModel(STATE.activeId);
+  toast('삭제 완료');
+}
+function editCurModel(){if(STATE.activeId)openModelModal(STATE.activeId);}
+
+// ── GLOBAL TAB
+function renderGlobal(){
+  document.getElementById('sp-global').innerHTML=`
+  <div class="gs">
+    <div class="gs-title">재고 색상 기준</div>
+    <div class="gs-row">
+      <div class="gs-lbl">🟢 충분 (초록) — 몇 개 이상부터?</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="gs-inp" type="number" id="g-green" value="${GOPTS.greenMin??2}" min="1" max="30" oninput="applyGopts()">
+        <span style="font-size:.7rem;color:var(--mu)">개 이상</span>
+      </div>
+    </div>
+    <div class="gs-row">
+      <div class="gs-lbl">🟡 주문필요 (노랑) — 몇 개 이상부터?</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:.78rem;color:var(--dim)">1 ~ (초록 기준 - 1) 사이</span>
+      </div>
+    </div>
+    <div class="gs-row">
+      <div class="gs-lbl" style="color:var(--mu)">🔴 재고없음 (빨강)</div>
+      <span style="font-size:.74rem;color:var(--mu)">0개 (고정)</span>
+    </div>
+  </div>
+  <div class="gs">
+    <div class="gs-title">전체 모델 최소재고 일괄 적용</div>
+    <div class="gs-row">
+      <div class="gs-lbl">모든 모델에 동일 최소재고 적용</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="gs-inp" type="number" id="g-min-all" value="1" min="0" max="20">
+        <span style="font-size:.7rem;color:var(--mu)">개</span>
+        <button class="sa prim" style="font-size:.69rem;padding:4px 9px" onclick="applyMinAll()">전체 적용</button>
+      </div>
+    </div>
+  </div>
+  <div class="gs">
+    <div class="gs-title">셀 크기 (자동 최적화)</div>
+    <div class="gs-row">
+      <div class="gs-lbl">화면 크기에 맞게 자동 계산됩니다</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:.74rem;color:var(--dim);font-family:var(--mo)" id="gs-cell-info">-</span>
+        <button class="sa" style="font-size:.7rem;padding:4px 10px" onclick="adjustZoom(-1)">− 축소</button>
+        <button class="sa prim" style="font-size:.7rem;padding:4px 10px" onclick="adjustZoom(0)">자동 맞춤</button>
+        <button class="sa" style="font-size:.7rem;padding:4px 10px" onclick="adjustZoom(+1)">＋ 확대</button>
+      </div>
+    </div>
+    <div style="padding:8px 12px;background:var(--s3);border-radius:6px;border:1px solid var(--bd);font-size:.7rem;color:var(--mu);margin-top:4px">
+      💡 범례바 우측 <b style="color:var(--text)">− / + / 맞춤</b> 버튼으로 실시간 조절 가능 &nbsp;|&nbsp;
+      키보드 단축키: <b style="color:var(--text);font-family:var(--mo)">Ctrl + / Ctrl − / Ctrl 0</b>
+    </div>
+  </div>`;
+  // 현재 셀 크기 정보 업데이트
+  const m=STATE.models.find(x=>x.id===STATE.activeId);
+  const infoEl=document.getElementById('gs-cell-info');
+  if(infoEl&&m){
+    if(m.type==='toric'){
+      const cw=calcToricCellW((m.cylVals||[]).length||1);
+      infoEl.textContent=`토릭 ${cw}×${calcToricCellH(cw)}px`;
+    } else {
+      const sz=calcSphereCell(m);
+      infoEl.textContent=`${sz}×${sz}px (줌 ${Math.round(ZOOM_STEPS[zoomIdx]*100)}%)`;
+    }
+  }
+}
+function applyGopts(){
+  GOPTS.greenMin=+document.getElementById('g-green').value||2; saveG();
+  if(STATE.activeId)selectModel(STATE.activeId);
+}
+function applyMinAll(){
+  const v=+document.getElementById('g-min-all').value||1;
+  STATE.models.forEach(m=>m.minStock=v); save();
+  if(STATE.activeId)selectModel(STATE.activeId); toast(`전체 최소재고 ${v}개 적용`,'ok');
+}
+
+// ── DATA TAB
+function renderDataTab(){
+  document.getElementById('sp-data').innerHTML=`
+  <div class="gs">
+    <div class="gs-title">백업 & 복원</div>
+    <div class="dbtn-row">
+      <button class="dbtn ok" onclick="exportAll()">⬇ 전체 데이터 내보내기 (JSON)</button>
+      <label class="dbtn" style="cursor:pointer">⬆ JSON 불러오기 (복원)
+        <input type="file" accept=".json" style="display:none" onchange="importAll(event)">
+      </label>
+    </div>
+    <div class="hint-box">💡 내보낸 JSON에는 모델 설정·재고·일정·텍스트 설정이 모두 포함됩니다.</div>
+  </div>
+  <div class="gs">
+    <div class="gs-title">초기화</div>
+    <div class="dbtn-row">
+      <button class="dbtn" onclick="rstStockOnly()">📦 전체 재고만 0으로</button>
+      <button class="dbtn" onclick="clearSched()">📅 오늘 일정 삭제</button>
+      <button class="dbtn danger" onclick="resetAll()">🗑 전체 초기화</button>
+    </div>
+  </div>
+  <div class="gs">
+    <div class="gs-title">모델 순서 변경</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${STATE.models.map((m,i)=>`
+        <div class="om-item">
+          <div style="width:9px;height:9px;border-radius:50%;background:${m.color}"></div>
+          <div style="flex:1;font-size:.78rem;font-weight:500">${esc(m.name)}</div>
+          <button class="sa" style="padding:3px 8px;font-size:.67rem" onclick="mvModel(${i},-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
+          <button class="sa" style="padding:3px 8px;font-size:.67rem" onclick="mvModel(${i},+1)" ${i===STATE.models.length-1?'disabled style="opacity:.3"':''}>↓</button>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function mvModel(i,d){
+  const t=i+d; if(t<0||t>=STATE.models.length)return;
+  [STATE.models[i],STATE.models[t]]=[STATE.models[t],STATE.models[i]];
+  save();renderModelList();renderDataTab();renderSpModels();
+}
+function rstStockOnly(){if(!confirm('모든 재고를 0으로 초기화할까요?'))return;STATE.models.forEach(m=>m.stock={});save();if(STATE.activeId)selectModel(STATE.activeId);toast('재고 초기화');}
+function exportAll(){
+  const b=new Blob([JSON.stringify({STATE,LABELS,GOPTS},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`iol_backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function importAll(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      if(p.STATE)STATE=p.STATE;
+      if(p.LABELS)LABELS={...DL,...p.LABELS};
+      if(p.GOPTS)GOPTS={...GOPTS,...p.GOPTS};
+      save();saveL();saveG();
+      applyLabels();renderModelList();renderSchedSelect();renderSchedule();
+      if(STATE.activeId)selectModel(STATE.activeId);
+      toast('복원 완료','ok');
+    }catch{toast('JSON 파일 오류','err');}
+  };r.readAsText(f);e.target.value='';
+}
+function resetAll(){
+  if(!confirm('모든 데이터·설정을 초기화할까요?\n이 작업은 되돌릴 수 없습니다.'))return;
+  localStorage.removeItem('iol3_state');localStorage.removeItem('iol3_labels');
+  localStorage.removeItem('iol3_gopts');localStorage.removeItem('iol3_collapse');
+  STATE={models:[...DEFAULT_MODELS.map(m=>({...m,stock:{}}))],schedule:[],activeId:null};
+  LABELS={...DL};GOPTS={greenMin:2,cellSize:'md'};COLLAPSE={};
+  save();saveL();saveG();applyLabels();
+  renderModelList();renderSchedSelect();renderSchedule();renderOrderList();
+  selectModel(STATE.models[0].id);toast('초기화 완료','ok');
+}
+
+// ═══════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeStockModal();closeModelModal();closeScan();closeSettings();}
+  if(e.key==='Enter'&&document.getElementById('stock-modal').style.display!=='none')confirmStock();
+  // 단축키: Ctrl+= / Ctrl+- 줌
+  if(e.ctrlKey&&(e.key==='='||e.key==='+')){e.preventDefault();adjustZoom(+1);}
+  if(e.ctrlKey&&e.key==='-'){e.preventDefault();adjustZoom(-1);}
+  if(e.ctrlKey&&e.key==='0'){e.preventDefault();adjustZoom(0);}
+});
+
+// ═══════════════════════════════════════
+// ★ 셀 크기 자동 최적화 엔진
+// ═══════════════════════════════════════
+
+function getGridWidth() {
+  const gs = document.getElementById('gscroll');
+  return gs ? gs.clientWidth : (window.innerWidth - 210 - 268);
+}
+
+// 단초점 그리드 최적 셀 크기 계산
+function calcSphereCell(modelOrCount) {
+  const count = typeof modelOrCount === 'number'
+    ? modelOrCount
+    : getSpheres(modelOrCount).length;
+
+  const availW = getGridWidth() - 32; // 양쪽 패딩 제거
+  const gap = 6;
+
+  // 줌 배율 적용 기준 크기
+  const base = Math.round(availW / CELL_TARGET_PER_ROW - gap);
+  const zoomed = Math.round(base * ZOOM_STEPS[zoomIdx]);
+
+  return Math.max(CELL_MIN, Math.min(CELL_MAX, zoomed));
+}
+
+// 토릭 셀 너비 계산
+function calcToricCellW(cylCount) {
+  const rowLblW = 68;
+  const availW = getGridWidth() - 28; // 패딩
+  const gap = 6;
+  const base = Math.round((availW - rowLblW - gap * cylCount) / cylCount);
+  const zoomed = Math.round(base * ZOOM_STEPS[zoomIdx]);
+  return Math.max(44, Math.min(90, zoomed));
+}
+
+// 토릭 셀 높이 = 너비 × 0.75
+function calcToricCellH(cw) {
+  return Math.max(40, Math.round(cw * 0.75));
+}
+
+// 크기 단계 태그 (폰트 스케일용)
+function sizeTag(px) {
+  if (px < 55)  return 'xs';
+  if (px < 65)  return 'sm';
+  if (px < 78)  return 'md';
+  if (px < 90)  return 'lg';
+  return 'xl';
+}
+
+// CSS 변수 & DOM 업데이트
+function applyCellSize() {
+  const model = STATE.models.find(m => m.id === STATE.activeId);
+  if (!model) return;
+
+  if (model.type === 'toric') {
+    const cw = calcToricCellW((model.cylVals||[]).length || 1);
+    const ch = calcToricCellH(cw);
+    document.documentElement.style.setProperty('--toric-h', ch + 'px');
+    // 토릭은 render 시 style로 직접 적용 (재렌더 필요)
+  } else {
+    const sz = calcSphereCell(model);
+    document.documentElement.style.setProperty('--cell-min', sz + 'px');
+    document.documentElement.style.setProperty('--cell-h',  Math.min(sz * 1.2, CELL_MAX) + 'px');
+    // 이미 렌더된 sphere-grid에 data-sz 적용
+    document.querySelectorAll('.sphere-grid').forEach(el => {
+      el.setAttribute('data-sz', sizeTag(sz));
+    });
+  }
+
+  // 줌 표시 업데이트
+  const pct = Math.round(ZOOM_STEPS[zoomIdx] * 100);
+  const valEl = document.getElementById('zoom-val');
+  if (valEl) valEl.textContent = pct === 100 ? '자동' : pct + '%';
+}
+
+// 줌 조절 (사용자가 +/- 누를 때)
+function adjustZoom(dir) {
+  if (dir === 0) {
+    // 자동 맞춤 — 기준값(index 3)으로 리셋
+    zoomIdx = 3;
+  } else {
+    zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length - 1, zoomIdx + dir));
+  }
+  GOPTS.zoomIdx = zoomIdx;
+  saveG();
+  applyCellSize();
+  // 토릭은 재렌더 필요 (셀 너비가 JS로 직접 설정되므로)
+  const model = STATE.models.find(m => m.id === STATE.activeId);
+  if (model) selectModel(model.id);
+}
+
+// ResizeObserver — 창 크기 변경 시 자동 재계산
+let resizeTmr = null;
+const ro = new ResizeObserver(() => {
+  clearTimeout(resizeTmr);
+  resizeTmr = setTimeout(() => {
+    applyCellSize();
+    // 토릭은 열 너비가 JS 계산이라 재렌더
+    const model = STATE.models.find(m => m.id === STATE.activeId);
+    if (model?.type === 'toric') selectModel(model.id);
+  }, 120);
+});
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+function init(){
+  load();
+  // 줌 복원
+  if (GOPTS.zoomIdx != null) zoomIdx = GOPTS.zoomIdx;  applyLabels();
+  updateDate(); setInterval(updateDate,60000);
+  renderModelList();
+  renderSchedSelect();
+  renderSchedule();
+  renderOrderList();
+  // ResizeObserver 등록
+  const cpanel = document.querySelector('.cpanel');
+  if (cpanel) ro.observe(cpanel);
+  if (STATE.models.length) selectModel(STATE.activeId||STATE.models[0].id);
+}
+init();
+</script>
+</body>
+</html>
