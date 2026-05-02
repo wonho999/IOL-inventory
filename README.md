@@ -8,7 +8,7 @@
 
 GitHub Pages가 활성화되어 있다면 다음 URL로 어디서든 접근 가능:
 ```
-https://<GitHub사용자명>.github.io/iol-inventory/
+https://<GitHub사용자명>.github.io/IOL-inventory/
 ```
 
 ## 주요 기능
