@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!-- 
+  IOL 재고관리 시스템 — 공개 데모 버전
+  개인정보 및 실제 데이터는 포함되지 않습니다.
+  모든 이름은 익명 처리되었습니다.
+  실제 사용 시 설정 > 연동 설정에서 병원명, 수령자 등을 입력하세요.
+-->
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1136,7 +1143,26 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
 
-    <!-- 렌즈 이름 매핑 -->
+    <!-- 수령자 설정 (입고 확인 기준) -->
+    <div class="gsync-section">
+      <div class="gss-head">
+        <div class="gss-title">👤 수령자 설정 — 입고 확인 기준</div>
+        <button class="nbtn" style="font-size:.66rem;padding:2px 8px" onclick="gsSaveReceivers()">💾 저장</button>
+      </div>
+      <div class="gss-body">
+        <div class="gss-hint">
+          구글 시트 <b>수령자</b> 칸에 아래 이름이 입력되면 <b>입고 완료</b>로 판단해 재고에 반영합니다.<br>
+          수령자가 비어있거나 다른 이름이면 <b>주문중</b> 상태로만 표시됩니다.<br>
+          쉼표로 구분해 여러 명 등록 가능 &nbsp;예) <code>홍길동, 이순신, 김유신</code>
+        </div>
+        <div class="gss-row">
+          <span class="gss-label">수령자 이름</span>
+          <input class="gss-inp" id="gs-receivers" placeholder="홍길동, 이순신, 김유신"
+            oninput="gsReceiverChanged()">
+        </div>
+        <div id="gs-receiver-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px"></div>
+      </div>
+    </div>
     <div class="gsync-section">
       <div class="gss-head">
         <div class="gss-title">🔬 렌즈 이름 매핑</div>
@@ -1209,8 +1235,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <label for="order-file-input" class="uz-btn" style="margin:0;padding:3px 10px;font-size:.68rem;cursor:pointer">파일 선택</label>
       <span style="font-size:.62rem;color:var(--mu)">또는 드래그&드롭</span>
       <div style="margin-left:auto;display:flex;gap:5px">
-        <button class="nbtn" style="font-size:.66rem;padding:2px 8px" onclick="loadDummyOrderData()">📋 더미 데이터 불러오기</button>
-        <button class="nbtn prim" style="font-size:.66rem;padding:2px 8px" onclick="applySheetTableData()">✅ 테이블 데이터 적용</button>
+        <button class="nbtn prim" style="font-size:.66rem;padding:2px 8px" onclick="applySheetTableData()">✅ 시각화 반영</button>
       </div>
     </div>
 
@@ -1554,12 +1579,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <div class="sp-tab on" id="stab-models" onclick="switchSTab('models')">💎 렌즈 모델</div>
       <div class="sp-tab" id="stab-labels" onclick="switchSTab('labels')">🖊 화면 텍스트</div>
       <div class="sp-tab" id="stab-global" onclick="switchSTab('global')">🔧 기준 설정</div>
+      <div class="sp-tab" id="stab-sync" onclick="switchSTab('sync')">🔗 연동 설정</div>
       <div class="sp-tab" id="stab-data" onclick="switchSTab('data')">💾 데이터</div>
     </div>
     <div class="sp-body">
       <div id="sp-models"></div>
       <div id="sp-labels" style="display:none"></div>
       <div id="sp-global" style="display:none"></div>
+      <div id="sp-sync" style="display:none"></div>
       <div id="sp-data" style="display:none"></div>
     </div>
   </div>
@@ -1585,7 +1612,7 @@ const ZOOM_STEPS=[0.65,0.75,0.85,1.0,1.15,1.3,1.5];
 // DEFAULT LABELS
 // ═══════════════════════════════════════
 const DL={
-  sys_title:'IOL 렌즈 재고 관리',sys_clinic:'',
+  sys_title:'IOL 렌즈 재고 관리 (데모)',sys_clinic:'',
   btn_settings:'⚙ 설정',btn_add_model:'＋ 모델 추가',
   btn_export_order:'📋 주문서 출력',btn_reset:'초기화',btn_edit_model:'✏ 모델 설정',
   panel_title:'렌즈 모델',
@@ -2511,13 +2538,14 @@ function doExportOrder(){
 function openSettings(){document.getElementById('sov').classList.add('open');switchSTab('models');}
 function closeSettings(){document.getElementById('sov').classList.remove('open');}
 function switchSTab(id){
-  ['models','labels','global','data'].forEach(t=>{
+  ['models','labels','global','sync','data'].forEach(t=>{
     document.getElementById('sp-'+t).style.display=t===id?'block':'none';
     document.getElementById('stab-'+t).classList.toggle('on',t===id);
   });
   if(id==='models')renderSpModels();
   if(id==='labels')renderLabelEditor();
   if(id==='global')renderGlobal();
+  if(id==='sync')renderSyncSettings();
   if(id==='data')renderDataTab();
 }
 
@@ -2741,7 +2769,134 @@ function renderGlobal(){
 function applyGopts(){GOPTS.greenMin=+document.getElementById('g-green').value||2;saveG();if(STATE.activeId)selectModel(STATE.activeId);}
 function applyMinAll(){const v=+document.getElementById('g-min-all').value||1;STATE.models.forEach(m=>m.minStock=v);save();if(STATE.activeId)selectModel(STATE.activeId);toast(`전체 최소재고 ${v}개 적용`,'ok');}
 
-// 데이터 탭
+// ── 연동 설정 탭 ──
+function renderSyncSettings(){
+  const el = document.getElementById('sp-sync');
+  const recvs = (GS_CONFIG.receivers||[]).join(', ');
+  const csvUrl = GS_CONFIG.csvUrl||'';
+  const gasUrl = GS_CONFIG.gasUrl||'';
+  const headerRow = GS_CONFIG.headerRow||1;
+
+  // 탭명 설정: LABELS에서 가져옴
+  const tabNames = {
+    dash:   LABELS.tab_dash   || '🏠 대시보드',
+    stock:  LABELS.tab_stock  || '📦 재고 관리',
+    orders: LABELS.tab_orders || '📋 주문 현황',
+    gsync:  LABELS.tab_gsync  || '🔗 구글 시트 연동',
+  };
+
+  el.innerHTML=`
+  <!-- 병원 기본 정보 -->
+  <div class="gs"><div class="gs-title">🏥 병원 정보</div>
+    <div class="gs-row"><div class="gs-lbl">병원명</div>
+      <input class="gs-inp" id="set-clinic" value="${esc(LABELS.sys_clinic||'')}"
+        placeholder="○○안과의원" style="width:200px" oninput="setLabel('sys_clinic',this.value)">
+    </div>
+    <div class="gs-row"><div class="gs-lbl">시스템 제목</div>
+      <input class="gs-inp" id="set-title" value="${esc(LABELS.sys_title||'IOL 렌즈 재고 관리')}"
+        placeholder="IOL 렌즈 재고 관리" style="width:200px" oninput="setLabel('sys_title',this.value)">
+    </div>
+    <div class="gs-row"><div class="gs-lbl">수술실 목록</div>
+      <input class="gs-inp" id="set-rooms" value="${esc(LABELS.rooms||'수술실 1,수술실 2,수술실 3')}"
+        placeholder="수술실 1,수술실 2" style="width:240px"
+        oninput="setLabel('rooms',this.value)">
+      <span style="font-size:.65rem;color:var(--mu)">쉼표 구분</span>
+    </div>
+  </div>
+
+  <!-- 탭 이름 커스텀 -->
+  <div class="gs"><div class="gs-title">📑 탭 이름 변경</div>
+    ${Object.entries(tabNames).map(([k,v])=>`
+    <div class="gs-row">
+      <div class="gs-lbl">${k}</div>
+      <input class="gs-inp" value="${esc(v)}" style="width:180px"
+        oninput="setLabel('tab_${k}',this.value);document.getElementById('apptab-${k}').innerHTML='<span class=\\'tab-icon\\'>${v.match(/./u)[0]}</span> '+this.value.replace(/./u,'').trim()">
+    </div>`).join('')}
+    <div style="font-size:.67rem;color:var(--mu);margin-top:6px">💡 변경 즉시 상단 탭에 반영됩니다</div>
+  </div>
+
+  <!-- 수령자 설정 -->
+  <div class="gs"><div class="gs-title">👤 수령자 설정 (입고 확인 기준)</div>
+    <div class="gs-row"><div class="gs-lbl" style="min-width:80px">수령자 이름</div>
+      <input class="gs-inp" id="set-receivers" value="${esc(recvs)}"
+        placeholder="홍길동, 이순신, 김유신" style="flex:1">
+      <button class="sa prim" style="font-size:.69rem;padding:4px 9px;flex-shrink:0"
+        onclick="saveReceiversFromSettings()">저장</button>
+    </div>
+    <div id="set-recv-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div>
+    <div style="font-size:.67rem;color:var(--mu);margin-top:5px">
+      구글 시트 <b>수령자</b> 칸에 이 이름이 입력되면 입고 확인 → 재고 반영<br>
+      비어있으면 주문중 상태로만 표시됨
+    </div>
+  </div>
+
+  <!-- 구글 시트 URL -->
+  <div class="gs"><div class="gs-title">🔗 구글 시트 연동 URL</div>
+    <div class="gs-row"><div class="gs-lbl">CSV URL</div>
+      <input class="gs-inp" id="set-csv-url" value="${esc(csvUrl)}"
+        placeholder="https://docs.google.com/spreadsheets/d/..." style="flex:1"
+        oninput="GS_CONFIG.csvUrl=this.value;gsSaveConfig()">
+      <button class="sa" style="font-size:.67rem;padding:3px 8px;flex-shrink:0"
+        onclick="gsTestUrl('csv')">테스트</button>
+    </div>
+    <div class="gs-row"><div class="gs-lbl">Apps Script</div>
+      <input class="gs-inp" id="set-gas-url" value="${esc(gasUrl)}"
+        placeholder="https://script.google.com/macros/s/..." style="flex:1"
+        oninput="GS_CONFIG.gasUrl=this.value;gsSaveConfig()">
+      <button class="sa" style="font-size:.67rem;padding:3px 8px;flex-shrink:0"
+        onclick="gsTestUrl('gas')">테스트</button>
+    </div>
+    <div class="gs-row"><div class="gs-lbl">헤더 행</div>
+      <input class="gs-inp" type="number" id="set-header-row" value="${headerRow}"
+        min="1" max="10" style="width:60px"
+        oninput="GS_CONFIG.headerRow=parseInt(this.value)||1;gsSaveConfig()">
+      <span style="font-size:.68rem;color:var(--mu)">번째 행이 컬럼 이름</span>
+    </div>
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <button class="sa prim" onclick="gsSyncNow()">🔄 지금 동기화</button>
+      <button class="sa ok" onclick="gsApplyStock()">✅ 재고 반영</button>
+      <button class="sa" onclick="switchAppTab('gsync');closeSettings()">🔗 연동 탭으로</button>
+    </div>
+  </div>
+
+  <!-- 자동 동기화 주기 -->
+  <div class="gs"><div class="gs-title">⏱ 자동 동기화 주기</div>
+    <div class="interval-row">
+      ${[{v:0,l:'수동'},{v:5,l:'5분'},{v:15,l:'15분'},{v:30,l:'30분'},{v:60,l:'1시간'}].map(({v,l})=>
+        `<div class="iv ${GS_CONFIG.intervalMin===v?'on':''}" onclick="setGsInterval(${v},this)">${l}</div>`
+      ).join('')}
+    </div>
+  </div>`;
+
+  // 수령자 칩 렌더
+  const chips = document.getElementById('set-recv-chips');
+  if(chips){
+    const r = (GS_CONFIG.receivers||[]);
+    chips.innerHTML = r.length
+      ? r.map(n=>`<span style="padding:2px 9px;border-radius:8px;background:var(--gbg);border:1px solid var(--gbd);color:var(--g2);font-size:.67rem">${esc(n)}</span>`).join('')
+      : `<span style="font-size:.66rem;color:var(--mu)">미설정 — 모든 행을 입고로 처리</span>`;
+  }
+}
+
+function setLabel(k,v){
+  LABELS[k]=v; saveL();
+  // 즉시 UI 반영
+  document.querySelectorAll(`[data-label="${k}"]`).forEach(el=>el.textContent=v);
+  if(k==='sys_clinic'){const cn=document.getElementById('clinic-name');if(cn){cn.textContent=v;cn.style.display=v?'block':'none';}}
+  if(k==='sys_title') document.title=v||'IOL 재고관리';
+}
+
+function saveReceiversFromSettings(){
+  const val = document.getElementById('set-receivers').value;
+  GS_CONFIG.receivers = val.split(',').map(s=>s.trim()).filter(Boolean);
+  gsSaveConfig();
+  // 연동 탭 입력도 동기화
+  const recInp = document.getElementById('gs-receivers');
+  if(recInp) recInp.value = GS_CONFIG.receivers.join(', ');
+  renderReceiverChips();
+  renderSyncSettings(); // 칩 다시 렌더
+  toast(`수령자 ${GS_CONFIG.receivers.length}명 저장 완료`,'ok');
+}
 function renderDataTab(){
   document.getElementById('sp-data').innerHTML=`
   <div class="gs"><div class="gs-title">백업 & 복원</div>
@@ -3063,42 +3218,8 @@ const SHEET_COLS = [
 let SHEET_DATA = [];
 let selectedRows = new Set();
 
-function genDummySheetData() {
-  const d = (n) => { const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
-  const td = todayStr();
-  return [
-    {orderDate:d(-2),customer:'김민준',  chartNo:'38421',surgDate:td,  lensName:'아이핸스',      diopter:'20.5',      eye:'OD',qty:1,orderedBy:'정승기',orderTime:'17:20',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'김민준',  chartNo:'38421',surgDate:td,  lensName:'아이핸스',      diopter:'21.0',      eye:'OS',qty:1,orderedBy:'정승기',orderTime:'17:20',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'박서연',  chartNo:'36982',surgDate:td,  lensName:'아이핸스 토릭', diopter:'19.0 1.50', eye:'OD',qty:1,orderedBy:'정승기',orderTime:'17:35',room:'수술실 2',memo:''},
-    {orderDate:d(-2),customer:'박서연',  chartNo:'36982',surgDate:td,  lensName:'아이핸스 토릭', diopter:'19.5 1.50', eye:'OS',qty:1,orderedBy:'정승기',orderTime:'17:35',room:'수술실 2',memo:''},
-    {orderDate:d(-2),customer:'이도현',  chartNo:'41023',surgDate:td,  lensName:'클라레온',      diopter:'22.0',      eye:'OD',qty:1,orderedBy:'정승기',orderTime:'17:51',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'이도현',  chartNo:'41023',surgDate:td,  lensName:'클라레온',      diopter:'22.5',      eye:'OS',qty:1,orderedBy:'정승기',orderTime:'17:51',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'최수아',  chartNo:'39541',surgDate:td,  lensName:'오디세이 토릭', diopter:'21.0 2.25', eye:'OD',qty:1,orderedBy:'정승기',orderTime:'18:02',room:'수술실 2',memo:''},
-    {orderDate:d(-2),customer:'최수아',  chartNo:'39541',surgDate:td,  lensName:'오디세이 토릭', diopter:'20.5 2.25', eye:'OS',qty:1,orderedBy:'정승기',orderTime:'18:02',room:'수술실 2',memo:''},
-    {orderDate:d(-2),customer:'정하준',  chartNo:'35872',surgDate:td,  lensName:'리사트리',      diopter:'20.0',      eye:'OD',qty:1,orderedBy:'김한나',orderTime:'18:15',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'정하준',  chartNo:'35872',surgDate:td,  lensName:'리사트리',      diopter:'20.5',      eye:'OS',qty:1,orderedBy:'김한나',orderTime:'18:15',room:'수술실 1',memo:''},
-    {orderDate:d(-2),customer:'강예진',  chartNo:'42108',surgDate:td,  lensName:'클라레온 토릭', diopter:'18.5 1.00', eye:'OD',qty:1,orderedBy:'김한나',orderTime:'18:28',room:'수술실 2',memo:''},
-    {orderDate:d(-1),customer:'한승우',  chartNo:'38901',surgDate:d(1),lensName:'아이핸스',      diopter:'19.5',      eye:'OD',qty:1,orderedBy:'정승기',orderTime:'10:08',room:'수술실 1',memo:''},
-    {orderDate:d(-1),customer:'한승우',  chartNo:'38901',surgDate:d(1),lensName:'아이핸스',      diopter:'20.0',      eye:'OS',qty:1,orderedBy:'정승기',orderTime:'10:08',room:'수술실 1',memo:''},
-    {orderDate:d(-1),customer:'오민서',  chartNo:'41352',surgDate:d(1),lensName:'신테시스 토릭', diopter:'21.5 2.25', eye:'OD',qty:1,orderedBy:'정승기',orderTime:'10:22',room:'수술실 2',memo:''},
-    {orderDate:d(-1),customer:'장태양',  chartNo:'36743',surgDate:d(1),lensName:'클라레온모노',  diopter:'24.0',      eye:'OD',qty:1,orderedBy:'정승기',orderTime:'10:35',room:'수술실 1',memo:''},
-    {orderDate:d(-1),customer:'장태양',  chartNo:'36743',surgDate:d(1),lensName:'클라레온모노',  diopter:'23.5',      eye:'OS',qty:1,orderedBy:'정승기',orderTime:'10:35',room:'수술실 1',memo:''},
-    {orderDate:d(-1),customer:'나혜원',  chartNo:'42584',surgDate:d(1),lensName:'아이핸스 토릭', diopter:'20.5 1.50', eye:'OD',qty:1,orderedBy:'김한나',orderTime:'11:00',room:'수술실 2',memo:''},
-    {orderDate:d(-1),customer:'나혜원',  chartNo:'42584',surgDate:d(1),lensName:'아이핸스 토릭', diopter:'21.0 1.50', eye:'OS',qty:1,orderedBy:'김한나',orderTime:'11:00',room:'수술실 2',memo:''},
-    {orderDate:td,   customer:'백다인',  chartNo:'39824',surgDate:d(2),lensName:'아이핸스 토릭', diopter:'20.0 1.00', eye:'OD',qty:1,orderedBy:'정승기',orderTime:'09:10',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'백다인',  chartNo:'39824',surgDate:d(2),lensName:'아이핸스 토릭', diopter:'20.5 1.00', eye:'OS',qty:1,orderedBy:'정승기',orderTime:'09:10',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'신재원',  chartNo:'42037',surgDate:d(2),lensName:'EMV 토릭',      diopter:'19.0 1.50', eye:'OD',qty:1,orderedBy:'정승기',orderTime:'09:25',room:'수술실 2',memo:'주의'},
-    {orderDate:td,   customer:'안지현',  chartNo:'38761',surgDate:d(2),lensName:'클라레온',      diopter:'23.0',      eye:'OD',qty:1,orderedBy:'이은혜',orderTime:'09:40',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'안지현',  chartNo:'38761',surgDate:d(2),lensName:'클라레온',      diopter:'23.5',      eye:'OS',qty:1,orderedBy:'이은혜',orderTime:'09:40',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'류서현',  chartNo:'38156',surgDate:d(5),lensName:'오디세이',      diopter:'21.0',      eye:'OD',qty:1,orderedBy:'이은혜',orderTime:'14:10',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'류서현',  chartNo:'38156',surgDate:d(5),lensName:'오디세이',      diopter:'21.5',      eye:'OS',qty:1,orderedBy:'이은혜',orderTime:'14:10',room:'수술실 1',memo:''},
-    {orderDate:td,   customer:'구민아',  chartNo:'40289',surgDate:d(5),lensName:'클라레온프로',  diopter:'22.0',      eye:'OD',qty:1,orderedBy:'이은혜',orderTime:'14:28',room:'수술실 2',memo:''},
-    {orderDate:td,   customer:'구민아',  chartNo:'40289',surgDate:d(5),lensName:'클라레온프로',  diopter:'22.5',      eye:'OS',qty:1,orderedBy:'이은혜',orderTime:'14:28',room:'수술실 2',memo:''},
-  ];
-}
-
 function initSheetTable() {
-  if (!SHEET_DATA.length) SHEET_DATA = genDummySheetData();
+  // 저장된 데이터 있으면 복원, 없으면 빈 테이블
   renderSheetTable();
 }
 
@@ -3111,6 +3232,17 @@ function renderSheetTable() {
     <th class="row-num" style="padding:5px 6px">#</th>
     ${SHEET_COLS.map(c=>`<th class="${c.cls}" style="padding:5px 8px">${c.label}</th>`).join('')}
   </tr>`;
+
+  // 빈 상태 안내
+  if (!SHEET_DATA.length) {
+    tbody.innerHTML = `<tr><td colspan="${SHEET_COLS.length+1}"
+      style="text-align:center;padding:32px;color:var(--mu);font-size:.78rem;font-family:inherit">
+      📂 CSV / Excel 파일을 업로드하거나 직접 행을 추가해서 데이터를 입력하세요
+    </td></tr>`;
+    const cnt = document.getElementById('sheet-row-count');
+    if (cnt) cnt.textContent = '';
+    return;
+  }
 
   const lensOpts = ['<option value="">선택</option>',...STATE.models.map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`)].join('');
   const eyeOpts  = ['OD','OS','OU'].map(e=>`<option>${e}</option>`).join('');
@@ -3200,11 +3332,6 @@ function sheetClear() {
   SHEET_DATA = []; selectedRows.clear(); renderSheetTable();
 }
 
-function loadDummyOrderData() {
-  SHEET_DATA = genDummySheetData(); selectedRows.clear(); renderSheetTable();
-  toast('더미 데이터 로드 완료','ok');
-}
-
 function applySheetTableData() {
   const rows = SHEET_DATA.filter(r => r.lensName || r.diopter);
   if (!rows.length) { toast('적용할 데이터가 없습니다','err'); return; }
@@ -3213,7 +3340,26 @@ function applySheetTableData() {
     eye_od:r.eye==='OD'?'1':'', eye_os:r.eye==='OS'?'1':'', eye_ou:r.eye==='OU'?'1':'',
   }));
   try { localStorage.setItem('iol3_order_data', JSON.stringify(ORDER_DATA)); } catch(e){}
-  renderOrdersView(); toast(`${ORDER_DATA.length}건 주문현황에 적용됨`,'ok');
+  renderOrdersView();
+  toast(`${ORDER_DATA.length}건 시각화 반영됨`,'ok');
+}
+
+// 파일 업로드 → 엑셀 테이블 + 시각화 자동 반영
+function loadOrderData(rows) {
+  ORDER_DATA = rows;
+  try { localStorage.setItem('iol3_order_data', JSON.stringify(rows)); } catch(e){}
+  SHEET_DATA = rows.map(r => ({
+    orderDate:r.orderDate||'', customer:r.customer||'', chartNo:r.chartNo||'',
+    surgDate:r.surgDate||'', lensName:r.lensName||'', diopter:r.diopter||'',
+    eye:r.eye_od?'OD':r.eye_os?'OS':'OU', qty:r.qty||1,
+    orderedBy:r.orderedBy||'', orderTime:r.orderTime||'',
+    room:r.room||'', memo:r.memo||'',
+  }));
+  selectedRows.clear();
+  switchAppTab('orders');
+  renderSheetTable();
+  renderOrdersView();
+  toast(`${rows.length}건 로드 완료 — 시각화 자동 반영됨`,'ok');
 }
 
 // ═══════════════════════════════════════
@@ -3248,101 +3394,101 @@ function genDummyData() {
   const d = (n) => { const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
   // 오늘 16명 (수술실 1·2 교차, 09:00~15:30)
   const todayList = [
-    {customer:'김민준',chartNo:'38421',room:'수술실 1',time:'09:00',
+    {customer:'환자01',chartNo:'00001',room:'수술실 1',time:'09:00',
      eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
-    {customer:'박서연',chartNo:'36982',room:'수술실 2',time:'09:00',
+    {customer:'환자02',chartNo:'00002',room:'수술실 2',time:'09:00',
      eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.0 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.5 1.50'}]},
-    {customer:'이도현',chartNo:'41023',room:'수술실 1',time:'09:30',
+    {customer:'환자03',chartNo:'00003',room:'수술실 1',time:'09:30',
      eyes:[{eye:'OD',lensName:'클라레온',diopter:'22.0'},{eye:'OS',lensName:'클라레온',diopter:'22.5'}]},
-    {customer:'최수아',chartNo:'39541',room:'수술실 2',time:'09:30',
+    {customer:'환자04',chartNo:'00004',room:'수술실 2',time:'09:30',
      eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'21.0 2.25'},{eye:'OS',lensName:'오디세이 토릭',diopter:'20.5 2.25'}]},
-    {customer:'정하준',chartNo:'35872',room:'수술실 1',time:'10:00',
+    {customer:'환자05',chartNo:'00005',room:'수술실 1',time:'10:00',
      eyes:[{eye:'OD',lensName:'리사트리',diopter:'20.0'},{eye:'OS',lensName:'리사트리',diopter:'20.5'}]},
-    {customer:'강예진',chartNo:'42108',room:'수술실 2',time:'10:00',
+    {customer:'환자06',chartNo:'00006',room:'수술실 2',time:'10:00',
      eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'18.5 1.00'}]},
-    {customer:'윤지호',chartNo:'37294',room:'수술실 1',time:'10:30',
+    {customer:'환자07',chartNo:'00007',room:'수술실 1',time:'10:30',
      eyes:[{eye:'OD',lensName:'아이핸스',diopter:'23.0'},{eye:'OS',lensName:'아이핸스',diopter:'22.5'}]},
-    {customer:'임나연',chartNo:'40617',room:'수술실 2',time:'10:30',
+    {customer:'환자08',chartNo:'00008',room:'수술실 2',time:'10:30',
      eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.5 1.50'}]},
-    {customer:'송민재',chartNo:'43021',room:'수술실 1',time:'11:00',
+    {customer:'환자09',chartNo:'00009',room:'수술실 1',time:'11:00',
      eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'22.0 2.25'}]},
-    {customer:'한지아',chartNo:'38774',room:'수술실 2',time:'11:00',
+    {customer:'환자10',chartNo:'00010',room:'수술실 2',time:'11:00',
      eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
-    {customer:'오승현',chartNo:'41589',room:'수술실 1',time:'11:30',
+    {customer:'환자11',chartNo:'41589',room:'수술실 1',time:'11:30',
      eyes:[{eye:'OD',lensName:'오디세이',diopter:'19.5'}]},
-    {customer:'장다은',chartNo:'37102',room:'수술실 2',time:'11:30',
+    {customer:'환자12',chartNo:'37102',room:'수술실 2',time:'11:30',
      eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'EMV 토릭',diopter:'20.5 1.50'}]},
-    {customer:'권태준',chartNo:'42390',room:'수술실 1',time:'13:00',
+    {customer:'환자13',chartNo:'42390',room:'수술실 1',time:'13:00',
      eyes:[{eye:'OD',lensName:'아이핸스',diopter:'18.5'},{eye:'OS',lensName:'아이핸스',diopter:'19.0'}]},
-    {customer:'유하린',chartNo:'39204',room:'수술실 2',time:'13:00',
+    {customer:'환자14',chartNo:'39204',room:'수술실 2',time:'13:00',
      eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.0 2.25'}]},
-    {customer:'배성민',chartNo:'40831',room:'수술실 1',time:'13:30',
+    {customer:'환자15',chartNo:'40831',room:'수술실 1',time:'13:30',
      eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
-    {customer:'조예슬',chartNo:'38562',room:'수술실 2',time:'13:30',
+    {customer:'환자16',chartNo:'38562',room:'수술실 2',time:'13:30',
      eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {customer:'신동우',chartNo:'41277',room:'수술실 1',time:'14:00',
+    {customer:'환자17',chartNo:'41277',room:'수술실 1',time:'14:00',
      eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.0'},{eye:'OS',lensName:'리사트리',diopter:'21.5'}]},
-    {customer:'문수진',chartNo:'39917',room:'수술실 2',time:'14:00',
+    {customer:'환자18',chartNo:'39917',room:'수술실 2',time:'14:00',
      eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'19.5 1.50'}]},
   ];
 
   // 내일 12명
   const d1List = [
-    {customer:'한승우',chartNo:'38901',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.5'},{eye:'OS',lensName:'아이핸스',diopter:'20.0'}]},
-    {customer:'오민서',chartNo:'41352',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.5 2.25'}]},
-    {customer:'장태양',chartNo:'36743',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
-    {customer:'나혜원',chartNo:'42584',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.0 1.50'}]},
-    {customer:'마준혁',chartNo:'38129',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.0'},{eye:'OS',lensName:'오디세이',diopter:'22.5'}]},
-    {customer:'서지우',chartNo:'40763',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'19.0 2.25'}]},
-    {customer:'고예나',chartNo:'41890',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'21.5'},{eye:'OS',lensName:'아이핸스',diopter:'22.0'}]},
-    {customer:'변재호',chartNo:'39337',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'19.5 1.00'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.0 1.00'}]},
-    {customer:'하수민',chartNo:'42017',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'20.5'},{eye:'OS',lensName:'리사트리',diopter:'21.0'}]},
-    {customer:'노태인',chartNo:'37845',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.0 2.25'}]},
-    {customer:'도하연',chartNo:'41623',room:'수술실 1',time:'11:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'20.0'},{eye:'OS',lensName:'클라레온프로',diopter:'20.5'}]},
-    {customer:'류민찬',chartNo:'38490',room:'수술실 2',time:'11:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 1.00'}]},
+    {customer:'환자19',chartNo:'38901',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.5'},{eye:'OS',lensName:'아이핸스',diopter:'20.0'}]},
+    {customer:'환자20',chartNo:'41352',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.5 2.25'}]},
+    {customer:'환자21',chartNo:'36743',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
+    {customer:'환자22',chartNo:'42584',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.0 1.50'}]},
+    {customer:'환자23',chartNo:'38129',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.0'},{eye:'OS',lensName:'오디세이',diopter:'22.5'}]},
+    {customer:'환자24',chartNo:'40763',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'19.0 2.25'}]},
+    {customer:'환자25',chartNo:'41890',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'21.5'},{eye:'OS',lensName:'아이핸스',diopter:'22.0'}]},
+    {customer:'환자26',chartNo:'39337',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'19.5 1.00'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.0 1.00'}]},
+    {customer:'환자27',chartNo:'42017',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'20.5'},{eye:'OS',lensName:'리사트리',diopter:'21.0'}]},
+    {customer:'환자28',chartNo:'37845',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.0 2.25'}]},
+    {customer:'환자29',chartNo:'41623',room:'수술실 1',time:'11:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'20.0'},{eye:'OS',lensName:'클라레온프로',diopter:'20.5'}]},
+    {customer:'환자30',chartNo:'38490',room:'수술실 2',time:'11:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 1.00'}]},
   ];
 
   // 모레 10명
   const d2List = [
-    {customer:'백다인',chartNo:'39824',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {customer:'신재원',chartNo:'42037',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'19.0 1.50'}]},
-    {customer:'안지현',chartNo:'38761',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온',diopter:'23.0'},{eye:'OS',lensName:'클라레온',diopter:'23.5'}]},
-    {customer:'임도연',chartNo:'41048',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'오디세이 토릭',diopter:'19.5 1.50'}]},
-    {customer:'최진우',chartNo:'39512',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'22.0'},{eye:'OS',lensName:'아이핸스',diopter:'21.5'}]},
-    {customer:'황보람',chartNo:'42319',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.5 2.25'}]},
-    {customer:'전승기',chartNo:'38053',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'19.5'},{eye:'OS',lensName:'리사트리',diopter:'20.0'}]},
-    {customer:'김나래',chartNo:'40924',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'21.5 1.50'}]},
-    {customer:'박현수',chartNo:'41732',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.0 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.5 2.25'}]},
-    {customer:'이서율',chartNo:'39268',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'25.0'},{eye:'OS',lensName:'클라레온모노',diopter:'24.5'}]},
+    {customer:'환자31',chartNo:'39824',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
+    {customer:'환자32',chartNo:'42037',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'19.0 1.50'}]},
+    {customer:'환자33',chartNo:'38761',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온',diopter:'23.0'},{eye:'OS',lensName:'클라레온',diopter:'23.5'}]},
+    {customer:'환자34',chartNo:'41048',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'오디세이 토릭',diopter:'19.5 1.50'}]},
+    {customer:'환자35',chartNo:'39512',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'22.0'},{eye:'OS',lensName:'아이핸스',diopter:'21.5'}]},
+    {customer:'환자36',chartNo:'42319',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.5 2.25'}]},
+    {customer:'환자37',chartNo:'38053',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'19.5'},{eye:'OS',lensName:'리사트리',diopter:'20.0'}]},
+    {customer:'환자38',chartNo:'40924',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'21.5 1.50'}]},
+    {customer:'환자39',chartNo:'41732',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.0 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.5 2.25'}]},
+    {customer:'환자40',chartNo:'39268',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'25.0'},{eye:'OS',lensName:'클라레온모노',diopter:'24.5'}]},
   ];
 
   // D+3 ~ D+7 (각 8~14명)
   const laterData = [
-    {surgDate:d(3),customer:'강민호',chartNo:'41205',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
-    {surgDate:d(3),customer:'오지수',chartNo:'38674',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.5 1.50'}]},
-    {surgDate:d(3),customer:'윤서준',chartNo:'42891',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'21.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
-    {surgDate:d(3),customer:'정유나',chartNo:'39104',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {surgDate:d(3),customer:'차동현',chartNo:'41567',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.5'},{eye:'OS',lensName:'오디세이',diopter:'23.0'}]},
-    {surgDate:d(3),customer:'태윤서',chartNo:'38823',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.5 2.25'}]},
-    {surgDate:d(3),customer:'표지환',chartNo:'40246',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.0'},{eye:'OS',lensName:'아이핸스',diopter:'19.5'}]},
-    {surgDate:d(3),customer:'허나은',chartNo:'42073',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'클라레온 토릭',diopter:'21.0 1.50'}]},
-    {surgDate:d(5),customer:'류서현',chartNo:'38156',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'21.0'},{eye:'OS',lensName:'오디세이',diopter:'21.5'}]},
-    {surgDate:d(5),customer:'구민아',chartNo:'40289',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'22.5'}]},
-    {surgDate:d(5),customer:'남도윤',chartNo:'37612',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'20.0 1.50'}]},
-    {surgDate:d(5),customer:'전예은',chartNo:'41784',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
-    {surgDate:d(5),customer:'황지민',chartNo:'39023',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.0 2.25'}]},
-    {surgDate:d(5),customer:'공태양',chartNo:'42601',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'22.0'},{eye:'OS',lensName:'리사트리',diopter:'22.5'}]},
-    {surgDate:d(7),customer:'기하윤',chartNo:'38340',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.0 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.5 1.50'}]},
-    {surgDate:d(7),customer:'라민준',chartNo:'41029',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온',diopter:'20.0'},{eye:'OS',lensName:'클라레온',diopter:'20.5'}]},
-    {surgDate:d(7),customer:'마지수',chartNo:'39712',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'19.5 1.00'}]},
-    {surgDate:d(7),customer:'바현서',chartNo:'42158',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'신테시스 토릭',diopter:'20.5 1.50'}]},
-    {surgDate:d(9),customer:'사도현',chartNo:'38897',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'21.0 2.25'},{eye:'OS',lensName:'비비티 토릭',diopter:'21.5 2.25'}]},
-    {surgDate:d(9),customer:'아서연',chartNo:'41473',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'23.0'},{eye:'OS',lensName:'클라레온프로',diopter:'23.5'}]},
-    {surgDate:d(9),customer:'자예린',chartNo:'39581',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.0'},{eye:'OS',lensName:'아이핸스',diopter:'20.5'}]},
-    {surgDate:d(11),customer:'차준서',chartNo:'42290',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.5 1.00'}]},
-    {surgDate:d(11),customer:'카민지',chartNo:'38634',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.5'},{eye:'OS',lensName:'리사트리',diopter:'22.0'}]},
-    {surgDate:d(14),customer:'파하은',chartNo:'41862',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.0 1.50'}]},
-    {surgDate:d(14),customer:'하도준',chartNo:'39148',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'22.0 2.25'}]},
+    {surgDate:d(3),customer:'환자41',chartNo:'41205',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
+    {surgDate:d(3),customer:'환자42',chartNo:'38674',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.5 1.50'}]},
+    {surgDate:d(3),customer:'환자43',chartNo:'42891',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'21.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
+    {surgDate:d(3),customer:'환자44',chartNo:'39104',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
+    {surgDate:d(3),customer:'환자45',chartNo:'41567',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.5'},{eye:'OS',lensName:'오디세이',diopter:'23.0'}]},
+    {surgDate:d(3),customer:'환자46',chartNo:'38823',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.5 2.25'}]},
+    {surgDate:d(3),customer:'환자47',chartNo:'40246',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.0'},{eye:'OS',lensName:'아이핸스',diopter:'19.5'}]},
+    {surgDate:d(3),customer:'환자48',chartNo:'42073',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'클라레온 토릭',diopter:'21.0 1.50'}]},
+    {surgDate:d(5),customer:'환자49',chartNo:'38156',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'21.0'},{eye:'OS',lensName:'오디세이',diopter:'21.5'}]},
+    {surgDate:d(5),customer:'환자50',chartNo:'40289',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'22.5'}]},
+    {surgDate:d(5),customer:'환자51',chartNo:'37612',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'20.0 1.50'}]},
+    {surgDate:d(5),customer:'환자52',chartNo:'41784',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
+    {surgDate:d(5),customer:'환자53',chartNo:'39023',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.0 2.25'}]},
+    {surgDate:d(5),customer:'환자54',chartNo:'42601',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'22.0'},{eye:'OS',lensName:'리사트리',diopter:'22.5'}]},
+    {surgDate:d(7),customer:'환자55',chartNo:'38340',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.0 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.5 1.50'}]},
+    {surgDate:d(7),customer:'환자56',chartNo:'41029',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온',diopter:'20.0'},{eye:'OS',lensName:'클라레온',diopter:'20.5'}]},
+    {surgDate:d(7),customer:'환자57',chartNo:'39712',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'19.5 1.00'}]},
+    {surgDate:d(7),customer:'환자58',chartNo:'42158',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'신테시스 토릭',diopter:'20.5 1.50'}]},
+    {surgDate:d(9),customer:'환자59',chartNo:'38897',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'21.0 2.25'},{eye:'OS',lensName:'비비티 토릭',diopter:'21.5 2.25'}]},
+    {surgDate:d(9),customer:'환자60',chartNo:'41473',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'23.0'},{eye:'OS',lensName:'클라레온프로',diopter:'23.5'}]},
+    {surgDate:d(9),customer:'환자61',chartNo:'39581',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.0'},{eye:'OS',lensName:'아이핸스',diopter:'20.5'}]},
+    {surgDate:d(11),customer:'환자62',chartNo:'42290',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.5 1.00'}]},
+    {surgDate:d(11),customer:'환자63',chartNo:'38634',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.5'},{eye:'OS',lensName:'리사트리',diopter:'22.0'}]},
+    {surgDate:d(14),customer:'환자64',chartNo:'41862',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.0 1.50'}]},
+    {surgDate:d(14),customer:'환자65',chartNo:'39148',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'22.0 2.25'}]},
   ];
 
   const today = todayStr();
@@ -3602,8 +3748,9 @@ let GS_CONFIG = {
   csvUrl: '',
   gasUrl: '',
   headerRow: 1,
-  intervalMin: 0,   // 0 = 수동
-  mapping: {},      // { modelId: ['시트렌즈명1','시트렌즈명2'] }
+  intervalMin: 0,
+  mapping: {},
+  receivers: [],   // 입고 확인 기준 수령자 이름 목록
 };
 let GS_RAW = [];           // 마지막으로 fetch한 원본 데이터
 let GS_SYNC_LOG = [];      // 로그 배열
@@ -3626,10 +3773,13 @@ function gsUrlChanged(){
 }
 
 function renderGsyncTab(){
-  // URL 입력 복원
   document.getElementById('gs-csv-url').value = GS_CONFIG.csvUrl || '';
   document.getElementById('gs-gas-url').value = GS_CONFIG.gasUrl || '';
   document.getElementById('gs-header-row').value = GS_CONFIG.headerRow || 1;
+  // 수령자 복원
+  const recInp = document.getElementById('gs-receivers');
+  if(recInp) recInp.value = (GS_CONFIG.receivers||[]).join(', ');
+  renderReceiverChips();
   // 인터벌 버튼
   document.querySelectorAll('.iv').forEach(el=>{
     const v = parseInt(el.textContent)||0;
@@ -3643,17 +3793,25 @@ function renderGsyncTab(){
 
 function updateGsStatusCard(){
   const hasUrl = !!(GS_CONFIG.csvUrl || GS_CONFIG.gasUrl);
-  const ind = document.getElementById('gsync-indicator');
+  const ind   = document.getElementById('gsync-indicator');
   const title = document.getElementById('gsync-status-title');
-  const sub = document.getElementById('gsync-status-sub');
+  const sub   = document.getElementById('gsync-status-sub');
+  const recvs = GS_CONFIG.receivers||[];
+
   if(!hasUrl){
     ind.className='gsc-indicator disconnected';
     title.textContent='연동 미설정';
     sub.textContent='URL을 입력해 구글 시트와 연결하세요';
   } else if(GS_RAW.length){
+    const today = todayStr();
+    const recvCount  = GS_RAW.filter(r=>isReceived(r)).length;
+    const schedCount = GS_RAW.filter(r=>r.surgDate&&r.surgDate>=today).length;
     ind.className='gsc-indicator connected';
     title.textContent=`연동됨 — ${GS_RAW.length}행`;
-    sub.textContent=`마지막 동기화: ${GS_SYNC_LOG[0]?.time||'-'}`;
+    sub.innerHTML = `마지막: ${GS_SYNC_LOG[0]?.time||'-'} &nbsp;|&nbsp; `
+      + `<span style="color:var(--g2)">✅ 입고확인 ${recvCount}건</span> &nbsp;|&nbsp; `
+      + `<span style="color:var(--b2)">📅 수술예정 ${schedCount}건</span>`
+      + (recvs.length ? ` &nbsp;|&nbsp; 수령자: ${recvs.join(', ')}` : ' &nbsp;|&nbsp; <span style="color:var(--mu)">수령자 미설정</span>');
   } else {
     ind.className='gsc-indicator disconnected';
     title.textContent='URL 설정됨 — 미동기화';
@@ -3861,17 +4019,48 @@ function findModelBySheetName(sheetName){
 }
 
 // ── 재고 반영 미리보기 ──
+// ── 수령자 관련 ──
+function gsReceiverChanged(){
+  const val = document.getElementById('gs-receivers').value;
+  GS_CONFIG.receivers = val.split(',').map(s=>s.trim()).filter(Boolean);
+  renderReceiverChips();
+}
+function gsSaveReceivers(){
+  gsReceiverChanged();
+  gsSaveConfig();
+  toast(`수령자 ${GS_CONFIG.receivers.length}명 저장 완료`,'ok');
+}
+function renderReceiverChips(){
+  const el = document.getElementById('gs-receiver-chips');
+  if(!el) return;
+  const recvs = GS_CONFIG.receivers||[];
+  el.innerHTML = recvs.length
+    ? recvs.map(r=>`<span style="padding:2px 9px;border-radius:8px;
+        background:var(--gbg);border:1px solid var(--gbd);color:var(--g2);
+        font-size:.67rem;font-family:var(--mo)">${esc(r)}</span>`).join('')
+    : `<span style="font-size:.66rem;color:var(--mu)">수령자 미설정 — 모든 행을 입고로 처리합니다</span>`;
+}
+
+// 수령자 확인 함수: 해당 행이 입고 완료인지 판단
+function isReceived(r){
+  const recvs = GS_CONFIG.receivers||[];
+  if(!recvs.length) return true; // 수령자 미설정 시 모두 입고로 처리
+  const recv = (r.receiver||'').trim();
+  if(!recv) return false; // 수령자 비어있으면 주문중
+  return recvs.some(name => recv.includes(name) || name.includes(recv));
+}
+
+// ── 재고 반영 미리보기 (수령자 기준으로 재작성) ──
 function gsRefreshPreview(){
   const today = todayStr();
   const rows = GS_RAW.filter(r=>r.lensName||r.diopter);
 
-  // 주문 수량 집계: { modelId: { 'sph_cyl': {add, use, sched} } }
+  // { modelId: { skey: { sph, cyl, model, received_qty, pending_qty, sched_qty } } }
   const delta = {};
 
   rows.forEach(r=>{
     const m = findModelBySheetName(r.lensName);
     if(!m) return;
-    if(!delta[m.id]) delta[m.id]={};
 
     const parts = (r.diopter||'').trim().split(/\s+/);
     const sph = parseFloat(parts[0]);
@@ -3880,71 +4069,101 @@ function gsRefreshPreview(){
     const sp = getSpheres(m).find(x=>Math.abs(x-sph)<.01);
     if(sp==null) return;
 
+    if(!delta[m.id]) delta[m.id]={};
     const k = skey(sp,cyl);
-    if(!delta[m.id][k]) delta[m.id][k]={sph:sp,cyl,add:0,use:0,sched:0,model:m};
+    if(!delta[m.id][k]) delta[m.id][k]={sph:sp,cyl,model:m,received:0,pending:0,sched:0};
 
-    // 수술일이 미래면 → 수술예정 (재고 차감 예정)
-    // 수술일이 과거/없음 → 이미 사용 (재고 차감)
-    // 주문수량은 재고 입고
+    const received = isReceived(r);
+
+    if(received){
+      // 수령자 확인 → 입고 완료 → 재고 +qty
+      delta[m.id][k].received += r.qty;
+    } else {
+      // 수령자 없음 → 주문중
+      delta[m.id][k].pending += r.qty;
+    }
+
+    // 수술일이 오늘 이후 → 수술예정 (별도 카운트)
     if(r.surgDate && r.surgDate >= today){
       delta[m.id][k].sched += r.qty;
-    } else if(r.surgDate && r.surgDate < today){
-      delta[m.id][k].use += r.qty;
-    } else {
-      delta[m.id][k].add += r.qty;
     }
   });
 
-  // 미리보기 렌더
   const grid = document.getElementById('gs-preview-grid');
-  const pvItems = [];
+  if(!grid) return;
 
-  let totalAdd=0, totalUse=0, totalSched=0;
+  const pvItems = [];
+  let totalReceived=0, totalPending=0, totalSched=0;
+
   Object.entries(delta).forEach(([mid,diops])=>{
     Object.entries(diops).forEach(([k,info])=>{
-      const cur = getStock(info.model,info.sph,info.cyl);
-      const afterUse = Math.max(0, cur - info.use);
-      totalAdd += info.add; totalUse += info.use; totalSched += info.sched;
-      const diopStr = info.cyl!=null ? `${fmtD(info.sph)}D +${fmtD(info.cyl)}CYL` : `${fmtD(info.sph)}D`;
-      pvItems.push({model:info.model,diopStr,cur,afterUse,info,k});
+      totalReceived += info.received;
+      totalPending  += info.pending;
+      totalSched    += info.sched;
+      pvItems.push(info);
     });
   });
 
-  document.getElementById('pv-stat-add').textContent = `입고 +${totalAdd}`;
-  document.getElementById('pv-stat-use').textContent = `사용차감 -${totalUse}`;
-  document.getElementById('pv-stat-sched').textContent = `수술예정 ${totalSched}`;
+  // 통계 배지 업데이트
+  const statAdd  = document.getElementById('pv-stat-add');
+  const statUse  = document.getElementById('pv-stat-use');
+  const statSched= document.getElementById('pv-stat-sched');
+  if(statAdd)   statAdd.textContent   = `✅ 입고확인 +${totalReceived}`;
+  if(statUse)   statUse.textContent   = `⏳ 주문중 ${totalPending}`;
+  if(statSched) statSched.textContent = `📅 수술예정 ${totalSched}`;
 
   if(!pvItems.length){
     grid.innerHTML='<div class="empty-msg">매핑된 데이터 없음 — 렌즈 이름 매핑을 확인하세요</div>';
     return;
   }
 
-  grid.innerHTML = pvItems.map(({model,diopStr,cur,afterUse,info})=>{
-    const diff = afterUse - cur;
-    const diffStr = diff>0?`+${diff}`:String(diff);
-    const cls = diff>0?'up':diff<0?'dn':'same';
-    return `<div class="pv-row">
-      <div class="pv-lens" style="border-left:3px solid ${model.color};padding-left:8px">${esc(model.name)}</div>
-      <div class="pv-diop">${esc(diopStr)}</div>
-      <div class="pv-cur">현재 ${cur}</div>
-      <div class="pv-arrow">→</div>
-      <div class="pv-new ${cls}">${afterUse} <span style="font-size:.6rem;opacity:.7">(${diffStr})</span></div>
-      ${info.use?`<span class="pv-badge use">사용 ${info.use}</span>`:''}
-      ${info.sched?`<span class="pv-badge sched">예정 ${info.sched}</span>`:''}
-      ${info.add?`<span class="pv-badge add">입고 +${info.add}</span>`:''}
-    </div>`;
-  }).join('');
+  grid.innerHTML = pvItems
+    .sort((a,b)=> b.received - a.received || b.sched - a.sched)
+    .map(info=>{
+      const cur = getStock(info.model, info.sph, info.cyl);
+      const afterReceive = cur + info.received;
+      const diopStr = info.cyl!=null ? `${fmtD(info.sph)}D +${fmtD(info.cyl)}CYL` : `${fmtD(info.sph)}D`;
+      const diff = info.received;
+      return `<div class="pv-row">
+        <div class="pv-lens" style="border-left:3px solid ${info.model.color};padding-left:8px">${esc(info.model.name)}</div>
+        <div class="pv-diop">${esc(diopStr)}</div>
+        <div class="pv-cur">현재 ${cur}</div>
+        <div class="pv-arrow">→</div>
+        <div class="pv-new ${diff>0?'up':'same'}">${afterReceive}
+          ${diff>0?`<span style="font-size:.6rem;opacity:.7">(+${diff})</span>`:''}
+        </div>
+        ${info.received?`<span class="pv-badge add">입고 +${info.received}</span>`:''}
+        ${info.pending ?`<span class="pv-badge" style="background:var(--ybg);color:var(--y2);border:1px solid var(--ybd)">주문중 ${info.pending}</span>`:''}
+        ${info.sched   ?`<span class="pv-badge sched">수술예정 ${info.sched}</span>`:''}
+      </div>`;
+    }).join('');
 }
 
-// ── 실제 재고 반영 ──
+// ── 실제 재고 반영 (수령자 기준으로 재작성) ──
 function gsApplyStock(){
   if(!GS_RAW.length){ toast('먼저 동기화하세요','err'); return; }
-  if(!confirm('구글 시트 데이터 기준으로 재고와 수술 일정을 반영할까요?')) return;
 
   const today = todayStr();
-  let stockChanged=0, schedAdded=0, skipped=0;
+  const recvRows  = GS_RAW.filter(r=>isReceived(r) && (r.lensName||r.diopter));
+  const schedRows = GS_RAW.filter(r=>r.surgDate && r.surgDate>=today && (r.lensName||r.diopter));
 
-  GS_RAW.forEach(r=>{
+  if(!recvRows.length && !schedRows.length){
+    toast('반영할 데이터가 없습니다. 수령자 이름을 확인하세요','err'); return;
+  }
+
+  const recvCount = recvRows.length;
+  const schedCount = schedRows.length;
+  const msg = [
+    recvCount  ? `입고확인 ${recvCount}건을 재고에 반영` : '',
+    schedCount ? `수술예정 ${schedCount}건을 일정에 추가` : '',
+  ].filter(Boolean).join(' + ');
+
+  if(!confirm(`${msg}\n\n진행할까요?`)) return;
+
+  let stockAdded=0, schedAdded=0, skipped=0;
+
+  // 1) 수령자 확인된 행 → 재고 입고
+  recvRows.forEach(r=>{
     const m = findModelBySheetName(r.lensName);
     if(!m){ skipped++; return; }
 
@@ -3955,38 +4174,64 @@ function gsApplyStock(){
     const sp = getSpheres(m).find(x=>Math.abs(x-sph)<.01);
     if(sp==null){ skipped++; return; }
 
-    if(r.surgDate && r.surgDate < today){
-      // 과거 수술 → 사용 차감
-      const cur = getStock(m,sp,cyl);
-      setStock(m,sp,cyl,Math.max(0,cur-r.qty));
-      stockChanged++;
-    } else if(r.surgDate && r.surgDate >= today){
-      // 미래 수술 → 수술 일정에 추가
-      const eyes=[];
-      if(r.eye_ou||(!r.eye_od&&!r.eye_os)) eyes.push('우안','좌안');
-      else{ if(r.eye_od)eyes.push('우안'); if(r.eye_os)eyes.push('좌안'); }
-      for(let i=0;i<r.qty;i++){
-        const eye=eyes[i%eyes.length]||'우안';
-        const dup=STATE.schedule.some(s=>
-          s.mid===m.id&&s.date===r.surgDate&&
-          Math.abs(+s.sph-sp)<.01&&
-          (cyl==null||Math.abs(+s.cyl-cyl)<.01)&&
-          s.eye===eye&&s._fromGs
-        );
-        if(!dup){ STATE.schedule.push({mid:m.id,date:r.surgDate,sph:sp,cyl,eye,_fromGs:true}); schedAdded++; }
+    // 중복 반영 방지: _gsReceived 태그
+    const dupKey = `${m.id}_${sp}_${cyl}_${r.surgDate||''}_${r.receiver||''}`;
+    if(!GS_CONFIG._appliedKeys) GS_CONFIG._appliedKeys={};
+    if(GS_CONFIG._appliedKeys[dupKey]){ return; }
+    GS_CONFIG._appliedKeys[dupKey] = true;
+
+    const cur = getStock(m,sp,cyl);
+    setStock(m,sp,cyl,cur + r.qty);
+    stockAdded++;
+  });
+
+  // 2) 수술일 있는 행 → 수술 일정 추가
+  schedRows.forEach(r=>{
+    const m = findModelBySheetName(r.lensName);
+    if(!m) return;
+
+    const parts = (r.diopter||'').trim().split(/\s+/);
+    const sph = parseFloat(parts[0]);
+    const cyl = parts[1]?parseFloat(parts[1]):null;
+    if(isNaN(sph)) return;
+    const sp = getSpheres(m).find(x=>Math.abs(x-sph)<.01);
+    if(sp==null) return;
+
+    // 눈 판별
+    const eyeStr = (r.eye||r.eye_od?'OD':r.eye_os?'OS':'OU')||'OD';
+    const eyes = eyeStr==='OU'||eyeStr==='양안'
+      ? ['우안','좌안']
+      : [eyeStr==='OD'||eyeStr==='우안'?'우안':'좌안'];
+
+    for(let i=0;i<(r.qty||1);i++){
+      const eye = eyes[i%eyes.length];
+      const dup = STATE.schedule.some(s=>
+        s.mid===m.id && s.date===r.surgDate &&
+        Math.abs(+s.sph-sp)<.01 &&
+        (cyl==null||Math.abs(+s.cyl-cyl)<.01) &&
+        s.eye===eye && s._fromGs
+      );
+      if(!dup){
+        STATE.schedule.push({
+          mid:m.id, date:r.surgDate, sph:sp, cyl, eye,
+          _fromGs:true,
+          customer: r.customer||'',
+        });
+        schedAdded++;
       }
     }
   });
 
   save();
+  gsSaveConfig(); // _appliedKeys 저장
   renderSchedule();
   renderOrderList();
   if(STATE.activeId) selectModel(STATE.activeId);
-
-  const msg=`재고 ${stockChanged}건 반영, 수술일정 ${schedAdded}건 추가${skipped?`, ${skipped}건 미매핑`:''}`;
-  gsAddLog(msg,'ok');
-  toast(msg,'ok');
   gsRefreshPreview();
+
+  const result = `재고 +${stockAdded}개 입고, 수술일정 ${schedAdded}건 추가${skipped?` (${skipped}건 미매핑)`:''}`;
+  gsAddLog(result,'ok');
+  toast(result,'ok');
 }
 
 // ── 로그 ──
