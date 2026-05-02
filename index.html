@@ -905,6 +905,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <button class="nbtn danger" onclick="resetAll()"><span data-label="btn_reset">초기화</span></button>
 </div>
 
+
+<!-- 공개 데모 배너 -->
+<div style="background:rgba(56,139,253,.12);border-bottom:1px solid rgba(56,139,253,.3);
+  padding:5px 18px;display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--b2)">
+  <span>🔍</span>
+  <span><b>데모 버전</b> — 모든 데이터는 예시이며 실제 개인정보를 포함하지 않습니다.</span>
+  <span style="margin-left:auto;color:var(--mu)">실제 사용 시 설정 &gt; 연동 설정에서 병원 정보를 입력하세요.</span>
+</div>
+
 <!-- APP TABS -->
 <div class="app-tabs">
   <div class="app-tab on" id="apptab-dash" onclick="switchAppTab('dash')">
@@ -3339,7 +3348,7 @@ function applySheetTableData() {
     surgDate:normalizeDate(r.surgDate), orderDate:normalizeDate(r.orderDate),
     eye_od:r.eye==='OD'?'1':'', eye_os:r.eye==='OS'?'1':'', eye_ou:r.eye==='OU'?'1':'',
   }));
-  try { localStorage.setItem('iol3_order_data', JSON.stringify(ORDER_DATA)); } catch(e){}
+  // 공개버전: order_data 저장 비활성화
   renderOrdersView();
   toast(`${ORDER_DATA.length}건 시각화 반영됨`,'ok');
 }
@@ -3347,7 +3356,7 @@ function applySheetTableData() {
 // 파일 업로드 → 엑셀 테이블 + 시각화 자동 반영
 function loadOrderData(rows) {
   ORDER_DATA = rows;
-  try { localStorage.setItem('iol3_order_data', JSON.stringify(rows)); } catch(e){}
+  // 공개버전: order_data localStorage 저장 비활성화
   SHEET_DATA = rows.map(r => ({
     orderDate:r.orderDate||'', customer:r.customer||'', chartNo:r.chartNo||'',
     surgDate:r.surgDate||'', lensName:r.lensName||'', diopter:r.diopter||'',
@@ -3414,81 +3423,81 @@ function genDummyData() {
      eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'22.0 2.25'}]},
     {customer:'환자10',chartNo:'00010',room:'수술실 2',time:'11:00',
      eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
-    {customer:'환자11',chartNo:'41589',room:'수술실 1',time:'11:30',
+    {customer:'환자11',chartNo:'00011',room:'수술실 1',time:'11:30',
      eyes:[{eye:'OD',lensName:'오디세이',diopter:'19.5'}]},
-    {customer:'환자12',chartNo:'37102',room:'수술실 2',time:'11:30',
+    {customer:'환자12',chartNo:'00012',room:'수술실 2',time:'11:30',
      eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'EMV 토릭',diopter:'20.5 1.50'}]},
-    {customer:'환자13',chartNo:'42390',room:'수술실 1',time:'13:00',
+    {customer:'환자13',chartNo:'00013',room:'수술실 1',time:'13:00',
      eyes:[{eye:'OD',lensName:'아이핸스',diopter:'18.5'},{eye:'OS',lensName:'아이핸스',diopter:'19.0'}]},
-    {customer:'환자14',chartNo:'39204',room:'수술실 2',time:'13:00',
+    {customer:'환자14',chartNo:'00014',room:'수술실 2',time:'13:00',
      eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.0 2.25'}]},
-    {customer:'환자15',chartNo:'40831',room:'수술실 1',time:'13:30',
+    {customer:'환자15',chartNo:'00015',room:'수술실 1',time:'13:30',
      eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
-    {customer:'환자16',chartNo:'38562',room:'수술실 2',time:'13:30',
+    {customer:'환자16',chartNo:'00016',room:'수술실 2',time:'13:30',
      eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {customer:'환자17',chartNo:'41277',room:'수술실 1',time:'14:00',
+    {customer:'환자17',chartNo:'00017',room:'수술실 1',time:'14:00',
      eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.0'},{eye:'OS',lensName:'리사트리',diopter:'21.5'}]},
-    {customer:'환자18',chartNo:'39917',room:'수술실 2',time:'14:00',
+    {customer:'환자18',chartNo:'00018',room:'수술실 2',time:'14:00',
      eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'19.5 1.50'}]},
   ];
 
   // 내일 12명
   const d1List = [
-    {customer:'환자19',chartNo:'38901',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.5'},{eye:'OS',lensName:'아이핸스',diopter:'20.0'}]},
-    {customer:'환자20',chartNo:'41352',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.5 2.25'}]},
-    {customer:'환자21',chartNo:'36743',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
-    {customer:'환자22',chartNo:'42584',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.0 1.50'}]},
-    {customer:'환자23',chartNo:'38129',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.0'},{eye:'OS',lensName:'오디세이',diopter:'22.5'}]},
-    {customer:'환자24',chartNo:'40763',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'19.0 2.25'}]},
-    {customer:'환자25',chartNo:'41890',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'21.5'},{eye:'OS',lensName:'아이핸스',diopter:'22.0'}]},
-    {customer:'환자26',chartNo:'39337',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'19.5 1.00'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.0 1.00'}]},
-    {customer:'환자27',chartNo:'42017',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'20.5'},{eye:'OS',lensName:'리사트리',diopter:'21.0'}]},
-    {customer:'환자28',chartNo:'37845',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.0 2.25'}]},
-    {customer:'환자29',chartNo:'41623',room:'수술실 1',time:'11:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'20.0'},{eye:'OS',lensName:'클라레온프로',diopter:'20.5'}]},
-    {customer:'환자30',chartNo:'38490',room:'수술실 2',time:'11:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 1.00'}]},
+    {customer:'환자19',chartNo:'00019',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.5'},{eye:'OS',lensName:'아이핸스',diopter:'20.0'}]},
+    {customer:'환자20',chartNo:'00020',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'21.5 2.25'}]},
+    {customer:'환자21',chartNo:'00021',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'24.0'},{eye:'OS',lensName:'클라레온모노',diopter:'23.5'}]},
+    {customer:'환자22',chartNo:'00022',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.0 1.50'}]},
+    {customer:'환자23',chartNo:'00023',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.0'},{eye:'OS',lensName:'오디세이',diopter:'22.5'}]},
+    {customer:'환자24',chartNo:'00024',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'19.0 2.25'}]},
+    {customer:'환자25',chartNo:'00025',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'21.5'},{eye:'OS',lensName:'아이핸스',diopter:'22.0'}]},
+    {customer:'환자26',chartNo:'00026',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'19.5 1.00'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.0 1.00'}]},
+    {customer:'환자27',chartNo:'00027',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'20.5'},{eye:'OS',lensName:'리사트리',diopter:'21.0'}]},
+    {customer:'환자28',chartNo:'00028',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.0 2.25'}]},
+    {customer:'환자29',chartNo:'00029',room:'수술실 1',time:'11:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'20.0'},{eye:'OS',lensName:'클라레온프로',diopter:'20.5'}]},
+    {customer:'환자30',chartNo:'00030',room:'수술실 2',time:'11:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 1.00'}]},
   ];
 
   // 모레 10명
   const d2List = [
-    {customer:'환자31',chartNo:'39824',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {customer:'환자32',chartNo:'42037',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'19.0 1.50'}]},
-    {customer:'환자33',chartNo:'38761',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온',diopter:'23.0'},{eye:'OS',lensName:'클라레온',diopter:'23.5'}]},
-    {customer:'환자34',chartNo:'41048',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'오디세이 토릭',diopter:'19.5 1.50'}]},
-    {customer:'환자35',chartNo:'39512',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'22.0'},{eye:'OS',lensName:'아이핸스',diopter:'21.5'}]},
-    {customer:'환자36',chartNo:'42319',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.5 2.25'}]},
-    {customer:'환자37',chartNo:'38053',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'19.5'},{eye:'OS',lensName:'리사트리',diopter:'20.0'}]},
-    {customer:'환자38',chartNo:'40924',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'21.5 1.50'}]},
-    {customer:'환자39',chartNo:'41732',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.0 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.5 2.25'}]},
-    {customer:'환자40',chartNo:'39268',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'25.0'},{eye:'OS',lensName:'클라레온모노',diopter:'24.5'}]},
+    {customer:'환자31',chartNo:'00037',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.0 1.00'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
+    {customer:'환자32',chartNo:'00038',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'19.0 1.50'}]},
+    {customer:'환자33',chartNo:'00039',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온',diopter:'23.0'},{eye:'OS',lensName:'클라레온',diopter:'23.5'}]},
+    {customer:'환자34',chartNo:'00040',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'오디세이 토릭',diopter:'19.5 1.50'}]},
+    {customer:'환자35',chartNo:'00041',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'22.0'},{eye:'OS',lensName:'아이핸스',diopter:'21.5'}]},
+    {customer:'환자36',chartNo:'00042',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.5 2.25'}]},
+    {customer:'환자37',chartNo:'00043',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'19.5'},{eye:'OS',lensName:'리사트리',diopter:'20.0'}]},
+    {customer:'환자38',chartNo:'00044',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'21.5 1.50'}]},
+    {customer:'환자39',chartNo:'00031',room:'수술실 1',time:'11:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.0 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.5 2.25'}]},
+    {customer:'환자40',chartNo:'00032',room:'수술실 2',time:'11:00',eyes:[{eye:'OD',lensName:'클라레온모노',diopter:'25.0'},{eye:'OS',lensName:'클라레온모노',diopter:'24.5'}]},
   ];
 
   // D+3 ~ D+7 (각 8~14명)
   const laterData = [
-    {surgDate:d(3),customer:'환자41',chartNo:'41205',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
-    {surgDate:d(3),customer:'환자42',chartNo:'38674',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.5 1.50'}]},
-    {surgDate:d(3),customer:'환자43',chartNo:'42891',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'21.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
-    {surgDate:d(3),customer:'환자44',chartNo:'39104',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
-    {surgDate:d(3),customer:'환자45',chartNo:'41567',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.5'},{eye:'OS',lensName:'오디세이',diopter:'23.0'}]},
-    {surgDate:d(3),customer:'환자46',chartNo:'38823',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.5 2.25'}]},
-    {surgDate:d(3),customer:'환자47',chartNo:'40246',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.0'},{eye:'OS',lensName:'아이핸스',diopter:'19.5'}]},
-    {surgDate:d(3),customer:'환자48',chartNo:'42073',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'클라레온 토릭',diopter:'21.0 1.50'}]},
-    {surgDate:d(5),customer:'환자49',chartNo:'38156',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'21.0'},{eye:'OS',lensName:'오디세이',diopter:'21.5'}]},
-    {surgDate:d(5),customer:'환자50',chartNo:'40289',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'22.5'}]},
-    {surgDate:d(5),customer:'환자51',chartNo:'37612',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'20.0 1.50'}]},
-    {surgDate:d(5),customer:'환자52',chartNo:'41784',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
-    {surgDate:d(5),customer:'환자53',chartNo:'39023',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.0 2.25'}]},
-    {surgDate:d(5),customer:'환자54',chartNo:'42601',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'22.0'},{eye:'OS',lensName:'리사트리',diopter:'22.5'}]},
-    {surgDate:d(7),customer:'환자55',chartNo:'38340',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.0 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.5 1.50'}]},
-    {surgDate:d(7),customer:'환자56',chartNo:'41029',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온',diopter:'20.0'},{eye:'OS',lensName:'클라레온',diopter:'20.5'}]},
-    {surgDate:d(7),customer:'환자57',chartNo:'39712',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'19.5 1.00'}]},
-    {surgDate:d(7),customer:'환자58',chartNo:'42158',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'신테시스 토릭',diopter:'20.5 1.50'}]},
-    {surgDate:d(9),customer:'환자59',chartNo:'38897',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'21.0 2.25'},{eye:'OS',lensName:'비비티 토릭',diopter:'21.5 2.25'}]},
-    {surgDate:d(9),customer:'환자60',chartNo:'41473',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'23.0'},{eye:'OS',lensName:'클라레온프로',diopter:'23.5'}]},
-    {surgDate:d(9),customer:'환자61',chartNo:'39581',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.0'},{eye:'OS',lensName:'아이핸스',diopter:'20.5'}]},
-    {surgDate:d(11),customer:'환자62',chartNo:'42290',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.5 1.00'}]},
-    {surgDate:d(11),customer:'환자63',chartNo:'38634',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.5'},{eye:'OS',lensName:'리사트리',diopter:'22.0'}]},
-    {surgDate:d(14),customer:'환자64',chartNo:'41862',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.0 1.50'}]},
-    {surgDate:d(14),customer:'환자65',chartNo:'39148',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'22.0 2.25'}]},
+    {surgDate:d(3),customer:'환자41',chartNo:'00058',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
+    {surgDate:d(3),customer:'환자42',chartNo:'00059',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'비비티 토릭',diopter:'20.5 1.50'}]},
+    {surgDate:d(3),customer:'환자43',chartNo:'00060',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'21.0'},{eye:'OS',lensName:'클라레온프로',diopter:'21.5'}]},
+    {surgDate:d(3),customer:'환자44',chartNo:'00061',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'20.5 1.00'}]},
+    {surgDate:d(3),customer:'환자45',chartNo:'00062',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'22.5'},{eye:'OS',lensName:'오디세이',diopter:'23.0'}]},
+    {surgDate:d(3),customer:'환자46',chartNo:'00063',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'21.5 2.25'}]},
+    {surgDate:d(3),customer:'환자47',chartNo:'00064',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'19.0'},{eye:'OS',lensName:'아이핸스',diopter:'19.5'}]},
+    {surgDate:d(3),customer:'환자48',chartNo:'00065',room:'수술실 2',time:'10:30',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'20.5 1.50'},{eye:'OS',lensName:'클라레온 토릭',diopter:'21.0 1.50'}]},
+    {surgDate:d(5),customer:'환자49',chartNo:'00045',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'오디세이',diopter:'21.0'},{eye:'OS',lensName:'오디세이',diopter:'21.5'}]},
+    {surgDate:d(5),customer:'환자50',chartNo:'00046',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'22.0'},{eye:'OS',lensName:'클라레온프로',diopter:'22.5'}]},
+    {surgDate:d(5),customer:'환자51',chartNo:'00047',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'클라레온프로 토릭',diopter:'20.0 1.50'}]},
+    {surgDate:d(5),customer:'환자52',chartNo:'00048',room:'수술실 1',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.5'},{eye:'OS',lensName:'아이핸스',diopter:'21.0'}]},
+    {surgDate:d(5),customer:'환자53',chartNo:'00049',room:'수술실 2',time:'10:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'18.5 2.25'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'19.0 2.25'}]},
+    {surgDate:d(5),customer:'환자54',chartNo:'00050',room:'수술실 1',time:'10:30',eyes:[{eye:'OD',lensName:'리사트리',diopter:'22.0'},{eye:'OS',lensName:'리사트리',diopter:'22.5'}]},
+    {surgDate:d(7),customer:'환자55',chartNo:'00051',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'21.0 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'21.5 1.50'}]},
+    {surgDate:d(7),customer:'환자56',chartNo:'00052',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온',diopter:'20.0'},{eye:'OS',lensName:'클라레온',diopter:'20.5'}]},
+    {surgDate:d(7),customer:'환자57',chartNo:'00053',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'오디세이 토릭',diopter:'19.5 1.00'}]},
+    {surgDate:d(7),customer:'환자58',chartNo:'00054',room:'수술실 2',time:'09:30',eyes:[{eye:'OD',lensName:'신테시스 토릭',diopter:'20.0 1.50'},{eye:'OS',lensName:'신테시스 토릭',diopter:'20.5 1.50'}]},
+    {surgDate:d(9),customer:'환자59',chartNo:'00055',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'비비티 토릭',diopter:'21.0 2.25'},{eye:'OS',lensName:'비비티 토릭',diopter:'21.5 2.25'}]},
+    {surgDate:d(9),customer:'환자60',chartNo:'00056',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온프로',diopter:'23.0'},{eye:'OS',lensName:'클라레온프로',diopter:'23.5'}]},
+    {surgDate:d(9),customer:'환자61',chartNo:'00057',room:'수술실 1',time:'09:30',eyes:[{eye:'OD',lensName:'아이핸스',diopter:'20.0'},{eye:'OS',lensName:'아이핸스',diopter:'20.5'}]},
+    {surgDate:d(11),customer:'환자62',chartNo:'00033',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'EMV 토릭',diopter:'20.5 1.00'}]},
+    {surgDate:d(11),customer:'환자63',chartNo:'00034',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'리사트리',diopter:'21.5'},{eye:'OS',lensName:'리사트리',diopter:'22.0'}]},
+    {surgDate:d(14),customer:'환자64',chartNo:'00035',room:'수술실 1',time:'09:00',eyes:[{eye:'OD',lensName:'아이핸스 토릭',diopter:'19.5 1.50'},{eye:'OS',lensName:'아이핸스 토릭',diopter:'20.0 1.50'}]},
+    {surgDate:d(14),customer:'환자65',chartNo:'00036',room:'수술실 2',time:'09:00',eyes:[{eye:'OD',lensName:'클라레온 토릭',diopter:'22.0 2.25'}]},
   ];
 
   const today = todayStr();
@@ -3926,7 +3935,7 @@ async function gsSyncNow(){
     GS_RAW = rows;
     // ORDER_DATA에도 반영 (주문현황 탭)
     ORDER_DATA = rows;
-    try{ localStorage.setItem('iol3_order_data', JSON.stringify(ORDER_DATA)); }catch{}
+    // 공개버전: order_data 저장 비활성화
 
     gsAddLog(`${rows.length}건 로드 완료`,'ok');
     if(ind) ind.className='gsc-indicator connected';
@@ -4357,7 +4366,7 @@ function loadOrderData(rows) {
   if (!ORDER_DATA.length) { toast('유효한 데이터가 없습니다', 'err'); return; }
 
   // localStorage 저장
-  try { localStorage.setItem('iol3_order_data', JSON.stringify(ORDER_DATA)); } catch(e){}
+  // 공개버전: order_data 저장 비활성화
 
   toast(`${ORDER_DATA.length}건 로드 완료`, 'ok');
   switchAppTab('orders');
@@ -4753,7 +4762,7 @@ function init(){
   if(GOPTS.zoomIdx!=null)zoomIdx=GOPTS.zoomIdx;
   applyLabels();updateDate();setInterval(updateDate,60000);
   renderModelList();renderSchedSelect();initDateQuickBtns();renderSchedule();renderOrderList();
-  loadSavedOrderData();
+  // loadSavedOrderData(); // 공개버전: 저장된 개인데이터 복원 비활성화
   gsLoadConfig();
   if(GS_CONFIG.intervalMin>0) gsSetupTimer();
   _loadPanelState();
